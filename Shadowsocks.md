@@ -15,14 +15,12 @@ method: aes-256-cfb
 - [ ] 境外服务器（centos7）
 - [ ] 开放443端口
 
-### 安装shadowsocks
+### 安装shadowsocks-libev
 
 ```sh
-# 安装pip
-yum install python-setuptools && easy_install pip
-
-# 安装 shadowsocks
-pip install shadowsocks
+curl https://raw.githubusercontent.com/inspireso/docs/master/resources/librehat-shadowsocks-epel-7.repo -o /etc/yum.repos.d/librehat-shadowsocks-epel-7.repo
+yum install -y epel-release
+yum install -y shadowsocks-libev
 ```
 
 ###  配置
@@ -39,7 +37,7 @@ pip install shadowsocks
   }
   ```
 
-- 添加服务 `/etc/systemd/system/shadowsocks.service`
+- 添加服务 `/usr/lib/systemd/system/shadowsocks.service`
 
   ```sh
   [Unit]
@@ -48,10 +46,10 @@ pip install shadowsocks
   After=network.target remote-fs.target nss-lookup.target
 
   [Service]
-  Type=forking
-  ExecStart=/usr/bin/ssserver -c /etc/shadowsocks/config.json -d start
+  Type=simple
+  ExecStart=/usr/bin/ss-server -c /etc/shadowsocks/config.json
   ExecReload=/bin/kill -HUP $MAINPID
-  ExecStop=/usr/bin/ssserver -d stop
+  ExecStop=/usr/bin/ss-server -d stop
 
   [Install]
   WantedBy=multi-user.target
@@ -160,8 +158,9 @@ pip install shadowsocks
 ### 安装shadowsocks-libev
 
 ```sh
+curl https://raw.githubusercontent.com/inspireso/docs/master/resources/librehat-shadowsocks-epel-7.repo -o /etc/yum.repos.d/librehat-shadowsocks-epel-7.repo
 yum install -y epel-release
-yum install shadowsocks-libev
+yum install -y shadowsocks-libev
 ```
 
 ### 配置
