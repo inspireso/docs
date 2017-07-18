@@ -225,8 +225,6 @@ yum install shadowsocks-libev
   sysctl -p /etc/sysctl.d/gw.conf
   ```
 
-  ​
-
 - 配置iptables，编辑`/etc/init.d/iptables-gfwlist`
 
   ```sh
