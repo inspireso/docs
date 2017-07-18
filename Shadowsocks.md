@@ -219,6 +219,14 @@ yum install shadowsocks-libev
   net.ipv4.ip_forward=1
   ```
 
+- 使配置生效
+
+  ```sh
+  sysctl -p /etc/sysctl.d/gw.conf
+  ```
+
+  ​
+
 - 配置iptables，编辑`/etc/init.d/iptables-gfwlist`
 
   ```sh
