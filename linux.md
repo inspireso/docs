@@ -52,15 +52,6 @@ root hard nofile 65535
 * hard nofile 65535
 ```
 
-## nginx最大连接数
-
-```sh
-worker_rlimit_nofile 65535;
-events {
-    worker_connections  65535;
-}
-```
-
 ## ssh
 
 ```sh
@@ -69,3 +60,38 @@ chmod 600 ~/.ssh/authorized_keys
 restorecon -r -vv ~/.ssh/authorized_keys
 ```
 
+##  selinux
+
+```sh
+永久方法 – 需要重启服务器
+修改/etc/selinux/config文件中设置SELINUX=disabled ，然后重启服务器。
+#临时方法 – 设置系统参数
+setenforce 0
+#setenforce 1 设置SELinux 成为enforcing模式
+#setenforce 0 设置SELinux 成为permissive模式
+```
+
+## dnsmasq
+
+### 安装
+
+```sh
+yum install -y dnsmasq
+systemctl enable dnsmasq && systemctl start dnsmasq
+```
+
+
+
+### 配置（/etc/dnsmasq.conf ） 
+
+```properties
+resolv-file=/etc/dnsmasq.resolv.conf 
+addn-hosts=/etc/dnsmasq.hosts 
+```
+
+### 注意
+
+- dns主机的hosts最好都清空只保留127.0.0.1
+- 做好dns的备机
+- 机器hosts优先级是最高的（相对内部dns）
+- redhat的dns主机启动/usr/local/sbin/dnsmasq -h 则不会加载本地hosts。

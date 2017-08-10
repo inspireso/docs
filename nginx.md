@@ -121,14 +121,13 @@ Max msgqueue size         819200               819200               bytes
 Max nice priority         0                    0
 Max realtime priority     0                    0
 Max realtime timeout      unlimited            unlimited            us
-
 ```
 
 ### linux内核参数
 
 ```sh
 #表示进程（例如一个worker进程）可能同时打开的最大句柄数，直接限制最大并发连接数
-fs.file max = 999999
+fs.file-max = 999999
 
 #1代表允许将状态为TIME-WAIT状态的socket连接重新用于新的连接。对于服务器来说有意义，因为有大量的TIME-WAIT状态的连接
 net.ipv4.tcp_tw_reuse = 1
@@ -169,6 +168,8 @@ net.ipv4.tcp_max_syn_backlog = 1024
 
 ## FAQ
 
+### 打开的文件数
+
 ```sh
 # 查看整个系统打开的文件数
 cat /proc/sys/fs/file-nr
@@ -176,5 +177,39 @@ cat /proc/sys/fs/file-nr
 ls /proc/pid/fd | wc -l
 #或者，需要安装yum install -y lsof
 lsof -p pid | wc -l 
+```
+
+### 爬虫
+
+```sh
+# http
+map $http_user_agent $limit_bots {
+    default 0;
+    ~*(qihoobot|Baiduspider|Googlebot|YoudaoBot|Sosospider) 1;
+    ~*(Adsbot-Google|Feedfetcher-Google|Googlebot-Mobile|Googlebot-Image|Mediapartners-Google) 1;
+    ~*(Slurp|spider|MSNBot|ia_archiver|Bot) 1;
+}
+
+# server
+if ($limit_bots = 1) {
+	return 403;
+}
+```
+
+## user-agent
+
+```sh
+# http
+map $http_user_agent $is_mobile {
+    default 0;
+    ~*(Android|iPhone|IEMoble|Mobile|WAP|Smartphone) 1;
+}
+
+# server, location
+if ($is_mobile = 0) {
+  proxy_pass  http://ups_account;
+  break;
+}
+
 ```
 
