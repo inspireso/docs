@@ -146,6 +146,12 @@ yum install -y shadowsocks-libev
 
 - [Windows](https://github.com/shadowsocks/shadowsocks-windows/wiki/Shadowsocks-Windows-%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E)
 
+### 编辑PAC
+
+- 首先我们打开和Shadowsocks.exe同文件夹中的 **user-rule.txt** 文件（如果没有就新建一个）
+- 添加`||你要添加的域名^`
+- 右键Shadowsocks托盘图标 >PAC >-更新PAC为 GFWList
+
 ## 服务器作为网关
 
 使用局域网中的一台服务器作为网关的时候，只需要其他要上网的计算器设置默认网关为该服务器即可。
