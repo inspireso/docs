@@ -104,4 +104,6 @@ log      =internal               bsize=4096   blocks=6271, version=2
 realtime =none                   extsz=4096   blocks=0, rtextents=0
 data blocks changed from 12844032 to 65272832
 
+#扩容ext4分区
+resize2fs /dev/cl/root
 ```

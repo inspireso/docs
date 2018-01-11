@@ -26,6 +26,7 @@ $ sysctl -p
 #更改镜像为阿里镜像
 $ mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
 $ curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+$ curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
 
 #添加kubernetes镜像
 $ cat <<EOF > /etc/yum.repos.d/kubernetes.repo
@@ -112,16 +113,19 @@ $ kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes
 ## node
 
 ```sh
-$ yum install -y nfs-utils
+yum install -y nfs-utils
+echo "options sunrpc tcp_slot_table_entries=128" >> /etc/modprobe.d/sunrpc.conf
+echo "options sunrpc tcp_max_slot_table_entries=128" >>  /etc/modprobe.d/sunrpc.conf
+sysctl -w sunrpc.tcp_slot_table_entries=128
 
-$ images=(kube-proxy-amd64:v1.6.4 pause-amd64:3.0)
+images=(kube-proxy-amd64:v1.6.4 pause-amd64:3.0)
 for imageName in ${images[@]} ; do
   docker pull registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName
   docker tag registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName gcr.io/google_containers/$imageName
   docker rmi registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName
 done
 
-$ kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
+kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
 ```
 
 

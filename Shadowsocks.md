@@ -212,7 +212,7 @@ yum install -y shadowsocks-libev
 - 设置自启动
 
   ```sh
-  systemctl enable shadowsocks && systemctl start shadowsocks
+  systemctl enable shadowsocks && systemctl restart shadowsocks
   ```
 
 
@@ -233,8 +233,10 @@ yum install -y shadowsocks-libev
 - 配置iptables，编辑`/etc/init.d/iptables-gfwlist`
 
   ```sh
-  ipset -N gfwlist iphash
+  ipset create gfwlist hash:ip
+  iptables -t nat -D PREROUTING -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port 1080
   iptables -t nat -A PREROUTING -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-port 1080
+  iptables -t nat -D PREROUTING -p icmp -m set --match-set gfwlist dst -j REDIRECT --to-port 1080
   iptables -t nat -A PREROUTING -p icmp -m set --match-set gfwlist dst -j REDIRECT --to-port 1080
   ```
 
@@ -259,7 +261,7 @@ yum install -y shadowsocks-libev
   chmod +x gfwlist2dnsmasq.sh
   # 生成翻墙域名列表，使用阿里的DNS解析gfwlist中域名
   gfwlist2dnsmasq.sh -d 223.5.5.5 -p 53 -s gfwlist -o /etc/dnsmasq.d/gfwlist.conf
-  systemctl enable dnsmasq.service && systemctl start dnsmasq.service
+  systemctl enable dnsmasq.service && systemctl restart dnsmasq.service
   ```
 
 - 配置完毕

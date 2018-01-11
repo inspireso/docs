@@ -105,16 +105,19 @@ $ kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes
 ## node
 
 ```sh
-$ yum install -y nfs-utils
+yum install -y nfs-utils
+echo "options sunrpc tcp_slot_table_entries=128" >> /etc/modprobe.d/sunrpc.conf
+echo "options sunrpc tcp_max_slot_table_entries=128" >>  /etc/modprobe.d/sunrpc.conf
+sysctl -w sunrpc.tcp_slot_table_entries=128
 
-$ images=(kube-proxy-amd64:v1.5.1 pause-amd64:3.0)
+images=(kube-proxy-amd64:v1.5.1 pause-amd64:3.0)
 for imageName in ${images[@]} ; do
   docker pull registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName
   docker tag registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName gcr.io/google_containers/$imageName
   docker rmi registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName
 done
 
-$ kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
+kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
 ```
 
 
