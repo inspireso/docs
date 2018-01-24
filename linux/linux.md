@@ -10,8 +10,6 @@ echo 'net.ipv4.conf.all.arp_ignore = 1' >> /etc/sysctl.conf
 sysctl -p
 ```
 
-
-
 ### 网卡添加路由
 
 ```sh
@@ -216,6 +214,91 @@ iperf -c 192.168.8.155 -i 1 -w 448k -t 60
 ss -lntp
 ```
 
+## ifstat
+
+
+
+## iftop
+
+```sh
+# install
+yum install epel-release -y
+yum install iftop -y
+
+# used
+iftop -N -n -i ens32
+```
+
+### iftop 界面含义如下
+
+```sh
+第一行：带宽显示
+
+中间部分：外部连接列表，即记录了哪些ip正在和本机的网络连接
+
+中间部分右边：实时参数分别是该访问ip连接到本机2秒，10秒和40秒的平均流量
+
+=>代表发送数据，<= 代表接收数据
+
+底部三行：表示发送，接收和全部的流量
+
+底部三行第二列：为你运行iftop到目前流量
+
+底部三行第三列：为高峰值
+
+底部三行第四列：为平均值
+```
+
+### 进入 iftop 的命令
+
+```sh
+按h切换是否显示帮助;
+
+按n切换显示本机的IP或主机名;
+
+按s切换是否显示本机的host信息;
+
+按d切换是否显示远端目标主机的host信息;
+
+按t切换显示格式为2行/1行/只显示发送流量/只显示接收流量;
+
+按N切换显示端口号或端口服务名称;
+
+按S切换是否显示本机的端口信息;
+
+按D切换是否显示远端目标主机的端口信息;
+
+按p切换是否显示端口信息;
+
+按P切换暂停/继续显示;
+
+按b切换是否显示平均流量图形条;
+
+按B切换计算2秒或10秒或40秒内的平均流量;
+
+按T切换是否显示每个连接的总流量;
+
+按l打开屏幕过滤功能，输入要过滤的字符，比如ip,按回车后，屏幕就只显示这个IP相关的流量信息;
+
+按L切换显示画面上边的刻度;刻度不同，流量图形条会有变化;
+
+按j或按k可以向上或向下滚动屏幕显示的连接记录;
+
+按1或2或3可以根据右侧显示的三列流量数据进行排序;
+
+按<根据左边的本机名或IP排序;
+
+按>根据远端目标主机的主机名或IP排序;
+
+按o切换是否固定只显示当前的连接;
+
+按f可以编辑过滤代码，这是翻译过来的说法，我还没用过这个！
+
+按!可以使用shell命令，这个没用过！没搞明白啥命令在这好用呢！
+
+按q退出监控。
+```
+
 
 
 ## ssh
@@ -258,6 +341,21 @@ tar -cjf 文件名.tar.bz2 *.jpg
 #解压
 tar -xjf 文件名.tar.bz2 
 ```
+
+## RPM
+
+```sh
+rpm [options] xxx.rpm
+-ivh：安装显示安装进度 --install--verbose--hash
+-Uvh：升级软件包 --Update；
+-qpl：列出 RPM 软件包内的文件信息 [Query Package list]；
+-qpi：列出 RPM 软件包的描述信息 [Query Package install package(s)]；
+-qf：查找指定文件属于哪个 RPM 软件包 [Query File]；
+-Va：校验所有的 RPM 软件包，查找丢失的文件 [View Lost]；
+-e：删除包
+```
+
+
 
 ## dnsmasq
 
@@ -342,5 +440,27 @@ yum install -y nfs-utils
 echo "options sunrpc tcp_slot_table_entries=128" >> /etc/modprobe.d/sunrpc.conf
 echo "options sunrpc tcp_max_slot_table_entries=128" >>  /etc/modprobe.d/sunrpc.conf
 sysctl -w sunrpc.tcp_slot_table_entries=128
+```
+
+## vi
+
+### 常用命令
+
+```sh
+w(e)          移动光标到下一个单词
+b             移动光标到上一个单词
+0             移动光标到本行最开头
+^             移动光标到本行最开头的字符处
+$             移动光标到本行结尾处
+o			 在当前行后面插入一空行
+
+H             移动光标到屏幕的首行
+M             移动光标到屏幕的中间一行
+L             移动光标到屏幕的尾行
+gg            移动光标到文档首行
+G             移动光标到文档尾行
+yy 　　		表示拷贝光标所在行
+dd 　　		表示删除光标所在行
+D 　　 		表示删除从当前光标到光标所在行尾的内容
 ```
 

@@ -72,7 +72,7 @@ $ cat <<EOF > /etc/keepalived/keepalived.conf
 global_defs {
    notification_email {
    	 #故障接受联系人
-     lan.xinen@inspireso.org
+     notify@inspireso.org
    }
    #故障发送人
    notification_email_from notify@inspireso.org
@@ -224,27 +224,27 @@ VIP=192.168.3.66
 
 case "$1" in
   start)
-      ifconfig lo:0 $VIP netmask 255.255.255.255 broadcast $VIP
-      /sbin/route add -host $VIP dev lo:0
-      echo "1" >/proc/sys/net/ipv4/conf/lo/arp_ignore
-      echo "2" >/proc/sys/net/ipv4/conf/lo/arp_announce
-      echo "1" >/proc/sys/net/ipv4/conf/all/arp_ignore
-      echo "2" >/proc/sys/net/ipv4/conf/all/arp_announce
-      sysctl -p >/dev/null 2>&1
-      echo "RealServer Start OK"
-      ;;
+    ip addr add $VIP/32 broadcast $VIP dev lo label lo:0
+    ip route add $VIP scope link src $VIP dev lo:0
+    echo "1" >/proc/sys/net/ipv4/conf/lo/arp_ignore
+    echo "2" >/proc/sys/net/ipv4/conf/lo/arp_announce
+    echo "1" >/proc/sys/net/ipv4/conf/all/arp_ignore
+    echo "2" >/proc/sys/net/ipv4/conf/all/arp_announce
+    sysctl -p >/dev/null 2>&1
+    echo "RealServer Start OK"
+    ;;
   stop)
-      ifconfig lo:0 down
-      route del $VIP >/dev/null 2>&1
-      echo "0" >/proc/sys/net/ipv4/conf/lo/arp_ignore
-      echo "0" >/proc/sys/net/ipv4/conf/lo/arp_announce
-      echo "0" >/proc/sys/net/ipv4/conf/all/arp_ignore
-      echo "0" >/proc/sys/net/ipv4/conf/all/arp_announce
-      echo "RealServer Stoped"
-      ;;
+    ip addr del $VIP/32 dev lo:0
+    #ip route del $VIP dev lo:0
+    echo "0" >/proc/sys/net/ipv4/conf/lo/arp_ignore
+    echo "0" >/proc/sys/net/ipv4/conf/lo/arp_announce
+    echo "0" >/proc/sys/net/ipv4/conf/all/arp_ignore
+    echo "0" >/proc/sys/net/ipv4/conf/all/arp_announce
+    echo "RealServer Stoped"
+    ;;
   *)
-      echo "Usage: $0 {start|stop}"
-      exit 1
+    echo "Usage: $0 {start|stop}"
+    exit 1
 esac
 
 exit 0
@@ -287,4 +287,99 @@ COMMIT
 #配置默认启动iptables并重启iptables防火墙
 $ systemctl enable iptables.service && systemctl restart iptables.service
 ```
+
+## ipvsadm
+
+### 集群服务管理类命令
+
+```sh
+# 添加集群
+ipvs -A -t|u|f service-address [-s scheduler]
+-t: TCP协议的集群 
+-u: UDP协议的集群 
+    service-address:     IP:PORT 
+-f: FWM: 防火墙标记 
+    service-address: Mark Number
+#示例
+ipvsadm -A -t 172.16.1.253:80 -s wlc
+
+# 修改集群
+ipvs -E -t|u|f service-address [-s scheduler]
+#示例
+ipvsadm -E -t 172.16.1.253:80 -s wrr
+
+#  删除集群
+ipvsadm -D -t|u|f service-address
+# 示例 
+ipvsadm -D -t 172.16.1.253:80
+```
+
+### 管理集群中的RealServer
+
+```sh
+#  添加RS
+ipvsadm -a -t|u|f service-address -r server-address [-g|i|m] [-w weight]
+-t|u|f service-address：事先定义好的某集群服务 
+-r server-address: 某RS的地址，在NAT模型中，可使用IP：PORT实现端口映射； 
+[-g|i|m]: LVS类型    
+    -g: DR 
+    -i: TUN 
+    -m: NAT 
+[-w weight]: 定义服务器权重
+#示例
+ipvsadm -a -t 172.16.1.253:80 -r 172.16.1.101 –g -w 5
+ipvsadm -a -t 172.16.1.253:80 -r 172.16.1.102 –g -w 10
+
+# 修改RS
+ipvsadm -e -t|u|f service-address -r server-address [-g|i|m] [-w weight]
+#示例
+ipvsadm -e -t 172.16.1.253:80 -r 172.16.1.101 –g -w 3
+
+#  删除RS
+ipvsadm -d -t|u|f service-address -r server-address
+#示例
+ipvsadm -d -t 172.16.1.253:80 -r 172.16.1.101
+```
+
+### 查看类
+
+```sh
+ipvsadm -L|l [options]
+#常用选项[options]如下：
+-n: 数字格式显示主机地址和端口 
+--stats：统计数据 
+--rate: 速率 
+--timeout: 显示tcp、tcpfin和udp的会话超时时长 
+-c: 显示当前的ipvs连接状况
+```
+
+### 其他管理类
+
+```sh
+#删除所有集群服务
+ipvsadm -C
+#保存规则
+service ipvsadm save
+ipvsadm -S > /path/to/somefile
+```
+
+
+
+## 其他注意事项
+
+- 关于时间同步：各节点间的时间偏差不大于1s，建议使用统一的ntp服务器进行更新时间；
+- DR模型中的VIP的MAC广播问题：
+
+在DR模型中，由于每个节点均要配置VIP，因此存在VIP的MAC广播问题，在现在的linux内核中，都提供了相应kernel 参数对MAC广播进行管理，具体如下：
+
+**arp_ignore: 定义接收到ARP请求时的响应级别；**
+
+0：只要本地配置的有相应地址，就给予响应； 
+1：仅在请求的目标地址配置在到达的接口上的时候，才给予响应；DR模型使用
+
+**arp_announce：定义将自己地址向外通告时的通告级别；**
+
+0：将本地任何接口上的任何地址向外通告； 
+1：试图仅向目标网络通告与其网络匹配的地址；
+2：仅向与本地接口上地址匹配的网络进行通告；DR模型使用
 
