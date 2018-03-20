@@ -25,8 +25,12 @@ ip ro add default via gw_ip dev eth2(interface) table 201
 ```sh
 # 查看整个系统打开的文件数
 cat /proc/sys/fs/file-nr
+1376    0       791284
+已分配文件句柄的数目 / 分配了但没有使用的句柄数目 / 文件句柄的最大数目
+
 # 查看某个进程pid打开的文件数
 ls /proc/pid/fd | wc -l
+
 #或者，需要安装yum install -y lsof
 lsof -p pid | wc -l 
 ```
@@ -102,6 +106,9 @@ nmcli con add type team con-name team0 ifname team0 config '{"runner":{"name": "
 nmcli con modify team0 ipv4.address '192.168.8.159/24' ipv4.gateway '192.168.8.254'
 #设置为手动模式
 nmcli con modify team0 ipv4.method manual
+
+#设置DNS
+nmcli con modify team0 ipv4.dns "114.114.114.114 8.8.8.8"
 
 #给接口eno2添加ip地址
 nmcli con mod eno2 +ipv4.address '192.168.8.159/24'
@@ -304,9 +311,13 @@ iftop -N -n -i ens32
 ## ssh
 
 ```sh
+#生成公钥密钥
+ssh-keygen -t rsa 
+
 chmod 700 ~/.ssh
 chmod 600 ~/.ssh/authorized_keys
 restorecon -r -vv ~/.ssh/authorized_keys
+
 ```
 
 ##  selinux
@@ -462,5 +473,78 @@ G             移动光标到文档尾行
 yy 　　		表示拷贝光标所在行
 dd 　　		表示删除光标所在行
 D 　　 		表示删除从当前光标到光标所在行尾的内容
+```
+
+## logrotate
+
+```sh
+#演练
+logrotate -d /etc/logrotate.d/log-file
+
+#强制轮循
+logrotate -vf /etc/logrotate.d/log-file
+```
+
+## curl
+
+```sh
+curl --insecure -v -O https://xxx
+```
+
+## openssl
+
+```sh
+#查看证书
+openssl x509  -noout -text -in xxx.pem
+
+#生成证书
+penssl genrsa -out kubelet-key.pem 2048
+openssl req -new -key kubelet-key.pem -out kubelet.csr -subj "/CN=kubelet-key" -config worker-openssl.cnf
+openssl x509 -req -in kubelet.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out kubelet.pem -days 365 -extensions v3_req -extfile worker-openssl.cnf -rsa256
+```
+
+
+
+## cfssl
+
+```sh
+#install
+wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+chmod +x cfssl_linux-amd64
+sudo mv cfssl_linux-amd64 /usr/local/bin/cfssl
+
+wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+chmod +x cfssljson_linux-amd64
+sudo mv cfssljson_linux-amd64 /usr/local/bin/cfssljson
+
+wget https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64
+chmod +x cfssl-certinfo_linux-amd64
+sudo mv cfssl-certinfo_linux-amd64 /usr/local/bin/cfssl-certinfo
+
+cfssl print-defaults config > config.json
+cfssl print-defaults csr > csr.json
+
+tee admin-csr.json << EOF
+{
+  "CN": "admin",
+  "hosts": [],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "Shenzhen",
+      "L": "Shenzhen",
+      "O": "k8s",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+
+cfssl-certinfo -cert /etc/kubernetes/pki/bak/admin.pem
+cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes apiserver-csr.json | cfssljson -bare apiserver
 ```
 

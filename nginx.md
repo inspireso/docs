@@ -173,8 +173,12 @@ net.ipv4.tcp_max_syn_backlog = 1024
 ```sh
 # 查看整个系统打开的文件数
 cat /proc/sys/fs/file-nr
+1376    0       791284
+已分配文件句柄的数目 / 分配了但没有使用的句柄数目 / 文件句柄的最大数目
+
 # 查看某个进程pid打开的文件数
 ls /proc/pid/fd | wc -l
+
 #或者，需要安装yum install -y lsof
 lsof -p pid | wc -l 
 ```
