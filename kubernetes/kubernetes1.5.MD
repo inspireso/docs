@@ -17,7 +17,7 @@ $ echo "net.bridge.bridge-nf-call-ip6tables = 1" >> /etc/sysctl.conf
 $ echo "net.bridge.bridge-nf-call-iptables = 1" >> /etc/sysctl.conf
 $ echo "net.netfilter.nf_conntrack_max=1000000" >> /etc/sysctl.conf
 $ echo "vm.max_map_count = 262144" >> /etc/sysctl.conf
-$ systcl -p
+$ sysctl -p
 
 #更改镜像为阿里镜像
 $ mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
@@ -27,12 +27,11 @@ $ curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Cento
 $ cat <<EOF > /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
-baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
 enabled=1
-gpgcheck=0
-repo_gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
-       https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 [docker]
 name=Docker
 baseurl=https://mirrors.aliyun.com/docker-engine/yum/repo/main/centos/7/
@@ -42,8 +41,10 @@ repo_gpgcheck=0
 EOF
 
 #安装指定版本的docker-1.12.5
-$ yum install -y docker-engine-selinux-1.12.5-1.el7.centos.noarch docker-engine-1.12.5-1.el7.centos.x86_64 
-$ yum install -y kubectl-1.5.4-0 kubectl-1.5.4-0 kubernetes-cni-0.3.0.1-0.07a8a2 kubeadm
+$ yum install -y yum-versionlock docker-engine-selinux-1.12.6-1.el7.centos.noarch docker-engine-1.12.6-1.el7.centos.x86_64
+$ yum versionlock add docker-engine-selinux docker-engine
+$ yum install -y kubelet-1.5.4-0 kubectl-1.5.4-0 kubernetes-cni-0.3.0.1-0.07a8a2 kubeadm
+$ yum versionlock add kubelet
 $ systemctl enable docker && systemctl start docker
 $ systemctl enable kubelet && systemctl start kubelet
 
