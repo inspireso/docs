@@ -316,6 +316,10 @@ ssh-keygen -t rsa
 
 chmod 700 ~/.ssh
 chmod 600 ~/.ssh/authorized_keys
+
+#设置免输入yes的known_hosts添加
+echo "StrictHostKeyChecking no" >> ~/.ssh/config
+echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
 restorecon -r -vv ~/.ssh/authorized_keys
 
 ```

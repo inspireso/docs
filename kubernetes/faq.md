@@ -23,8 +23,7 @@
   #测试serviceaccount是否生效
   kubectl run --rm -i -t centos --image=centos -- bash
   KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-  curl -sSk -H "Authorization: Bearer $KUBE_TOKEN" \
-      https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_PORT_443_TCP_PORT/api/v1/namespaces/default/pods/$HOSTNAME
+  curl -sSk -H "Authorization: Bearer $KUBE_TOKEN" \    https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_PORT_443_TCP_PORT/api/v1/namespaces/default/pods/$HOSTNAME
   ```
   ​
 
