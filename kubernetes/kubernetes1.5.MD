@@ -48,10 +48,19 @@ $ yum versionlock add kubelet
 $ systemctl enable docker && systemctl start docker
 $ systemctl enable kubelet && systemctl start kubelet
 
+#OverlayFS
+echo "overlay" > /etc/modules-load.d/overlay.conf
+modprobe overlay
+lsmod | grep overlay
+
 # 配置镜像加速
 $ tee /etc/docker/daemon.json <<-'EOF'
 {
-    "registry-mirrors": ["https://dqwotnqy.mirror.aliyuncs.com","http://095bbdcd.m.daocloud.io"]
+  "storage-driver": "overlay2",
+  "storage-opts": [
+    "overlay2.override_kernel_check=true"
+  ],
+  "registry-mirrors": ["https://w6gp6d0a.mirror.aliyuncs.com"]
 }
 EOF
 #重启docker
@@ -119,6 +128,18 @@ for imageName in ${images[@]} ; do
 done
 
 kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
+
+mkdir -p /etc/systemd/system/kubelet.service.d
+$ tee /etc/systemd/system/kubelet.service.d/10-kubeadm.conf <<-'EOF'
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf --require-kubeconfig=true"
+Environment="KUBELET_SYSTEM_PODS_ARGS=--pod-manifest-path=/etc/kubernetes/manifests --allow-privileged=true"
+Environment="KUBELET_NETWORK_ARGS=--network-plugin=cni --cni-conf-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin"
+Environment="KUBELET_DNS_ARGS=--cluster-dns=10.96.0.10 --cluster-domain=cluster.local"
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_SYSTEM_PODS_ARGS $KUBELET_NETWORK_ARGS $KUBELET_DNS_ARGS $KUBELET_EXTRA_ARGS
+EOF
+
 ```
 
 

@@ -1,26 +1,70 @@
-## GC
+## 堆的分配
+
+```properties
+              			                 -Xms/-Xmx
+              +-----------------------------------------------------------------------------+
+              			                 -XX:NewRatio=tenured/(eden+from+to)
+              				m
+              +------------------------------+-----------------------------------------------+
+                                                                  -Xmn
+                                             +-----------------------------------------------+
+ -XX:PermSize/MaxPermSize                     -XX:SurivorRatio=eden/from=eden/to
+  +-----------+                              +----------------------+-----------+
+  +-----------+------------------------------+----------------------+-----------+------------+
+  |           |                              |                      |           |            |
+  |           |                              |                      |           |            | 
+  |   Perm    |            tenured           |        eden          |    from   |     to     |
+  |           |                              |                      |           |            |
+  |           |                              |                      |           |            |
+  +-----------+------------------------------+----------------------+-----------+------------+   
+  +---持久区--+----------------------------------堆-------------------------------------------+ 
+              +------------老年代 ------------+---------------------- 新生代 -----------------+
+              
+              
+```
+
+
+
+## JVM启动参数
 
 ```sh
+#打印传递给虚拟机的显式和隐式参数，隐式。
+-XX:+PrintCommandLineFlags 
+#指定GC 输出日志
+-Xloggc:gc.log
 #打印GC日志
 -XX:+PrintGC
 #打印详细的GC日志
 -XX:+PrintGCDetails
 #每次GC发生时，额外输出GC发生的时间
--XX:+PrintGCTimestmaps
+-XX:+PrintGCTimeStmaps
+#输出GC的时间戳（以日期的形式，如 2017-09-04T21:53:59.234+0800）
+-XX:+PrintGCDateStamps 
 #在GC日志输出前后，都有详细的堆信息输出
 -XX:+PrintHeapAtGC
 #打印应用程序的执行时间
 -XX:+PrintGCApplicationConcurrentTime
 #打印应用程序由于GC而产生的停顿时间
 -XX:+PrintGCApplicationStoppedTime
+#跟踪系统内的软应用、弱引用、虚引用和Finallize队列
+-XX:+PrintReferenceGC
+#跟踪类的加载和卸载
+-verbose:class
+-XX:+TraceClassLoading
+-XX:+TraceClassUnloading
+
+#新生代和老年代的比例
+-XX:NewRatio=老年代/新生代=2
 ```
+
+##  GC相关参数
 
 ### 与串行回收器相关的参数
 
 | 参数                          | 说明                                     |
 | :--------------------------------- | :-------------------------------------|
 | -XX:+UseSerialGC           | 在新生代和老年代使用串行收集器。                              |
-| -XX:SurvivorRatio          | 设置**eden**区大小和**survivior**区大小的比例；**eden/from=eden/to** |
+| -XX:SurvivorRatio          | 设置**eden**区大小和**survivior**区大小的比例；**eden/from=eden/to** ,默认值8 |
 | -XX:PretenureSizeThreshold   | 设置大对象直接进入老年代的阈值。当对象的大小超过这个值时，将直接在老年代分配。 |
 | -XX:MaxTenuringThreshold | 设置对象进入老年代的年龄的最大值。第一次**Minor GC**后，对象年龄就加1.任何大于这个年龄的对象，一定会进入老年代，默认15。 |
 
@@ -88,19 +132,42 @@
 
 
 | **GC类型**             | **参数**                                                     | **备注**                        |
-| ---------------------- | ------------------------------------------------------------ | ------------------------------- |
+| ---------------------- | :----------------------------------------------------------- | :------------------------------ |
 | Serial GC              | -XX:+UseSerialGC                                             |                                 |
 | Parallel GC            | -XX:+UseParallelGC-XX:ParallelGCThreads=value                |                                 |
 | Parallel Compacting GC | -XX:+UseParallelOldGC                                        |                                 |
 | CMS GC                 | -XX:+UseConcMarkSweepGC-XX:+UseParNewGC-XX:+CMSParallelRemarkEnabled-XX:CMSInitiatingOccupancyFraction=value-XX:+UseCMSInitiatingOccupancyOnly |                                 |
 | G1                     | -XX:+UnlockExperimentalVMOptions-XX:+UseG1GC                 | 在JDK 6中这两个参数必须配合使用 |
 
-
-
-### OOM
+## OOM
 
 ```sh
 -XX:+HeapDumpOnOUtOfMemoryError
 -XX:HeapDumpPath=/data/
+-XX:OnOutOfMemoryError=/tools/jdk/bin/printstack.sh %p
+
+```
+
+## 方法区配置
+
+```sh
+#配置永久区初始大小
+-XX:PermSize=128m
+#配置永久区最大限制
+-XX:MaxPermSize=256m
+
+```
+
+## 栈配置
+
+```sh
+#指定线程的栈大小
+-Xss
+```
+
+## 直接内存
+
+```sh
+-XX:MaxDirectMemorySize
 ```
 
