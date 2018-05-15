@@ -1,4 +1,10 @@
+## 修改为阿里镜像库
 
+```sh
+mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
+curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+```
 
 ## 网络
 
@@ -128,6 +134,7 @@ nmcli connection add type team con-name CNAME ifname INAME [config JSON]
 #activebakup 这是一个故障迁移程序，监控链接更改并选择活动的端口进行传输。
 #loadbalance 监控流量并使用哈希函数以尝试在选择传输端口的时候达到完美均衡。
 #lacp 实施802.3ad 链路聚合协议，可以使用与 loadbalance 运行程序相同的传输端口选择的可能性。
+
 #例子
 nmcli con add type team con-name team0 ifname team0 config '{"runner":{"name": "roundrobin"}}'
 #给接口team0设置ip地址
@@ -141,6 +148,39 @@ nmcli con add type team-slave con-name team0-port3 ifname eno3 master team0
 # nmcli con up team0
 # 查看team0的状态就出现了
 teamdctl team0 st 
+```
+
+### ip
+
+```sh
+ip [ OPTIONS ] OBJECT { COMMAND | help }  
+OBJECT 和 COMMAND可以简写到一个字母
+ip help    　　　　　可以查到OBJECT列表和OPTIONS，简写 ip h
+ip <OBJECT> help　　　查看针对该OBJECT的帮助，比如 ip addr help，简写 ip a h
+ip addr    　　　　　查看网络接口地址，简写 ip a
+
+#查看网络接口地址，替代ifconfig： 
+ip addr
+# 网络接口统计信息
+ip -s link
+
+## ip route显示和设定路由
+#显示路由表
+ip route
+#添加静态路由
+ip route add 10.15.150.0/24 via 192.168.150.253 dev enp0s3
+#删除静态路由只需要把 add 替换成 del，或者更简单的只写目标网络
+ip route del 10.15.150.0/24
+
+##用 ip neighbor 代替 arp -n
+ip nei
+
+## 用ss 代替 netstat
+#对应netstat -ant
+ss -ant
+#对应netstat -antp
+ss -antp
+ss -antp|column -t
 ```
 
 
@@ -215,13 +255,41 @@ iperf -c 192.168.8.155 -i 1 -w 448k -t 60
 
 
 
-### ss
+## ifstat
 
 ```sh
-ss -lntp
+[root@sz-idc-02-k8s002 ~]# ifstat
+#kernel
+Interface        RX Pkts/Rate    TX Pkts/Rate    RX Data/Rate    TX Data/Rate
+                 RX Errs/Drop    TX Errs/Drop    RX Over/Rate    TX Coll/Rate
+lo                     0 0             0 0             0 0             0 0
+                       0 0             0 0             0 0             0 0
+eno1                 901 0         94097 0        903682 0         7469K 0
+                       0 0             0 0             0 0             0 0
+eno2                   0 0             0 0             0 0             0 0
+                       0 0             0 0             0 0             0 0
+eno3              276831 0         94106 0       286558K 0         7483K 0
+                       0 0             0 0             0 0             0 0
+eno4                   0 0             0 0             0 0             0 0
+                       0 0             0 0             0 0             0 0
+enp0s20f0u1u6          4 0             0 0           200 0             0 0
+                       0 0             0 0             0 0             0 0
+docker0                0 0             0 0             0 0             0 0
+                       0 0             0 0             0 0             0 0
+team0             169071 0        188158 0       277902K 0        14949K 0
+                       0 0             0 0             0 0             0 0
 ```
 
-## ifstat
+
+
+## glances（实时监控）
+
+```sh
+#安装
+yum install -y glances
+# 运行
+glances
+```
 
 
 
@@ -399,14 +467,6 @@ addn-hosts=/etc/dnsmasq.hosts
 
 
 
-## 修改为阿里镜像库
-
-```sh
-mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
-curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
-curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
-```
-
 ## 升级linux内核
 
 ```sh
@@ -429,8 +489,9 @@ rpm -qa | grep kernel
 ## OverlayFS
 
 ```sh
-$ echo "overlay" > /etc/modules-load.d/overlay.conf
-$ lsmod | grep overlay
+echo "overlay" > /etc/modules-load.d/overlay.conf
+modprobe overlay
+lsmod | grep overlay
 
 $ sed -i -e '/^ExecStart=/ s/$/ --storage-driver=overlay/' /usr/lib/systemd/system/docker.service \
 rm /var/lib/docker -rf
@@ -550,5 +611,49 @@ EOF
 
 cfssl-certinfo -cert /etc/kubernetes/pki/bak/admin.pem
 cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes apiserver-csr.json | cfssljson -bare apiserver
+```
+
+## rm（防止误删除）
+
+```sh
+vi ~/.bashrc
+#alias rm='rm -i'
+alias rm=trash        
+alias rl='ls ~/.Trash'  
+alias ur=undelfile  
+undelfile()  
+{  
+  mv -i ~/.Trash/$@ ./  
+}  
+trash()  
+{  
+  mv $@ ~/.Trash/  
+}
+cleartrash()  
+{  
+    read -p "Clear trash?[n]" confirm  
+    [ $confirm == 'y' ] || [ $confirm == 'Y' ]  && /usr/bin/rm -rf ~/.Trash/*  
+}
+
+source ~/.bashrc
+
+##使用
+#删除一个文件夹，helloworld下面的文件均被移到回收站中
+$rm helloworld
+
+#删除一个文件
+$rm abc.txt
+
+#撤销abc.txt
+$ur abc.txt
+
+#撤销helloworld文件夹
+$ur helloworld
+
+#列出回收站
+$rl
+
+#清空回收站
+cleartrash
 ```
 

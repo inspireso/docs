@@ -6,8 +6,10 @@
 
  ```sh
 # 安装编译工具
-$ yum install -y epel-release
-$ yum install -y gcc make libc-devel  openssl-devel pcre-devel zlib-devel jemalloc-devel bzip2
+mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
+curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+yum install -y gcc make libc-devel  openssl-devel pcre-devel zlib-devel jemalloc-devel bzip2
 
 #下载源代码
 $ cd /usr/src/
@@ -15,12 +17,13 @@ $ curl --insecure -o jemalloc-5.0.1.tar.bz2  https://github.com/jemalloc/jemallo
 $ tar xjf jemalloc-5.0.1.tar.bz2
 
 $ cd /usr/src/
-$ curl --insecure -o openssl-1.0.2l.tar.gz  https://www.openssl.org/source/openssl-1.0.2l.tar.gz
-$ tar xzf openssl-1.0.2l.tar.gz
+$ curl --insecure -o openssl-1.1.1-pre6.tar.gz  https://www.openssl.org/source/openssl-1.1.1-pre6.tar.gz
+$ tar xzf openssl-1.1.1-pre6.tar.gz
 
-$ curl -o tengine-2.2.0.tar.gz http://tengine.taobao.org/download/tengine-2.2.0.tar.gz
-$ tar xzf tengine-2.2.0.tar.gz
-$ cd tengine-2.2.0
+$ cd /usr/src/
+$ curl -o tengine-2.2.2.tar.gz http://tengine.taobao.org/download/tengine-2.2.2.tar.gz
+$ tar xzf tengine-2.2.2.tar.gz
+$ cd tengine-2.2.2
 $ ./configure  \
 	--user=nginx \
   	--group=nginx \
@@ -32,7 +35,7 @@ $ ./configure  \
     --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
     --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
     --with-http_v2_module \
-    --with-openssl=/usr/src/openssl-1.0.2l \
+    --with-openssl=/usr/src/openssl-1.0.2o \
     --with-jemalloc=/usr/src/jemalloc-5.0.1
     
     
@@ -81,10 +84,12 @@ $ systemctl enable nginx && systemctl start nginx.service
 
 ```sh
 #修改最大连接数
-$ echo root soft nofile 65535 >> /etc/security/limits.conf
-$ echo root hard nofile 65535 >> /etc/security/limits.conf
-$ echo * soft nofile 65535 >> /etc/security/limits.conf
-$ echo * hard nofile 65535 >> /etc/security/limits.conf
+ulimit -n  65535
+
+echo 'root soft nofile 65535' >> /etc/security/limits.conf
+echo 'root hard nofile 65535' >> /etc/security/limits.conf
+echo '* soft nofile 65535' >> /etc/security/limits.conf
+echo '* hard nofile 65535' >> /etc/security/limits.conf
 ```
 
 - /usr/local/nginx/conf/nginx.conf
@@ -181,6 +186,9 @@ ls /proc/pid/fd | wc -l
 
 #或者，需要安装yum install -y lsof
 lsof -p pid | wc -l 
+
+#查看nginx当前的打开文件数
+lsof -i:80
 ```
 
 ### 爬虫

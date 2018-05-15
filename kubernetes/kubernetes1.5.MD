@@ -40,7 +40,7 @@ gpgcheck=0
 repo_gpgcheck=0
 EOF
 
-#安装指定版本的docker-1.12.5
+#安装指定版本的docker-1.12.6
 $ yum install -y yum-versionlock docker-engine-selinux-1.12.6-1.el7.centos.noarch docker-engine-1.12.6-1.el7.centos.x86_64
 $ yum versionlock add docker-engine-selinux docker-engine
 $ yum install -y kubelet-1.5.4-0 kubectl-1.5.4-0 kubernetes-cni-0.3.0.1-0.07a8a2 kubeadm
@@ -168,4 +168,12 @@ EOF
 >```sh
 >$ kubectl taint nodes kuben0 dedicated=master:NoSchedule
 >```
+
+### 维护
+
+```sh
+kubectl cordon kuben6
+kubectl drain --ignore-daemonsets kuben6
+kubectl uncordon kuben6
+```
 
