@@ -4,38 +4,42 @@
 
 ## 环境
 
-os: CentOS Linux release 7.3.1611 (Core)
-kernel: Linux kuben0 3.10.0-514.2.2.el7.x86_64 #1 SMP Tue Dec 6 23:06:41 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
+os: CentOS Linux release 7.4.1708 (Core)
+kernel: 3.10.0-693.el7.x86_64 #1 SMP Tue Aug 22 21:09:27 UTC 2017 x86_64 x86_64 x86_64 GNU/Linux
 
 ## 准备工作
 
 ```sh
 #卸载防火墙
-$ systemctl stop firewalld && sudo systemctl disable firewalld && yum remove -y firewalld
+systemctl stop firewalld && sudo systemctl disable firewalld && yum remove -y firewalld
 
 #内核参数设置
-$ setenforce 0
+setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
 echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
 echo "net.bridge.bridge-nf-call-ip6tables = 1" >> /etc/sysctl.conf
 echo "net.bridge.bridge-nf-call-iptables = 1" >> /etc/sysctl.conf
-$ sysctl -p
+echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+sysctl -p
+
+#加载overlay模块
+modprobe overlay
+lsmod | grep overlay
+echo "overlay" > /etc/modules-load.d/overlay.conf
 
 #更改镜像为阿里镜像
-$ mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
-$ curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
-$ curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
+curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
 
 #添加kubernetes镜像
 $ cat <<EOF > /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
-baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
 enabled=1
-gpgcheck=0
-repo_gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
-       https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 [docker]
 name=Docker
 baseurl=https://mirrors.aliyun.com/docker-engine/yum/repo/main/centos/7/
@@ -52,6 +56,8 @@ yum versionlock add docker-engine-selinux docker-engine
 yum install -y  kubelet kubectl kubeadm
 #yum versionlock add kubelet kubectl
 
+sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
 # 配置镜像加速
 mkdir /etc/docker
 tee /etc/docker/daemon.json <<-'EOF'
@@ -65,10 +71,7 @@ tee /etc/docker/daemon.json <<-'EOF'
 }
 EOF
 systemctl enable docker && systemctl restart docker
-systemctl enable kubelet && systemctl restart kubelet
-
-#重启docker
-systemctl restart docker
+#systemctl enable kubelet && systemctl restart kubelet
 docker info
 
 #配置docker日志自动归档
@@ -92,31 +95,37 @@ EOF
 ## master
 
 ```sh
-#下载镜像
-$ kube_version=v1.7.10
-$ images=(kube-proxy-amd64:$kube_version kube-scheduler-amd64:$kube_version kube-controller-manager-amd64:$kube_version kube-apiserver-amd64:$kube_version etcd-amd64:3.0.17  pause-amd64:3.0 k8s-dns-sidecar-amd64:1.14.4  k8s-dns-kube-dns-amd64:1.14.4 k8s-dns-dnsmasq-nanny-amd64:1.14.4)
-for imageName in ${images[@]} ; do
-  docker pull registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName
-  docker tag registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName gcr.io/google_containers/$imageName
-  docker rmi registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName
-done
+cat <<EOF > config.yaml 
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+etcd:
+  image: "registry.cn-hangzhou.aliyuncs.com/kube_containers/etcd-amd64:3.1.10"
+networking:
+  podSubnet: 10.1.0.0/16
+kubernetesVersion: 1.10.2
+imageRepository: "registry.cn-hangzhou.aliyuncs.com/kube_containers"
+tokenTTL: "0"
+featureGates:
+  CoreDNS: true
+EOF
 
-$ kubeadm init --pod-network-cidr="10.1.0.0/16" --kubernetes-version=$kube_version
-
-#配置网络CNI
-#测试环境：直接使用weavenet
-$ kubectl apply -f https://git.io/weave-kube-1.6
+kubeadm init --config config.yaml
 
 #生产环境: 使用calico
-$ kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes/kubernetes/addon/calico/calico1.6.yaml
+kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes/kubernetes/addon/calico/calico1.7.yaml
 
 ```
 
 ### dashboard
 
 ```sh
+#准备证书（最后一个需要输入master的主机名称）
+mkdir dashboard-certs
+openssl req -newkey rsa:4096 -nodes -sha256 -keyout dashboard.key -x509 -days 365 -out dashboard.crt
+kubectl  -n kube-system create secret generic kubernetes-dashboard-certs --from-file=./dashboard-certs
+
 #安装dashboard
-$ kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes/kubernetes/google_containers/kubernetes-dashboard1.7.yaml
+kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes/kubernetes/google_containers/kubernetes-dashboard1.8.yaml
 
 #添加管理员
 $ kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes/kubernetes/google_containers/kubernetes-dashboard-admin.rbac.yaml
@@ -132,16 +141,6 @@ $ kubectl describe -n kube-system secret/kubernetes-dashboard-admin-token-XXX
 
 ```sh
 yum install -y nfs-utils
-echo "options sunrpc tcp_slot_table_entries=128" >> /etc/modprobe.d/sunrpc.conf
-echo "options sunrpc tcp_max_slot_table_entries=128" >>  /etc/modprobe.d/sunrpc.conf
-sysctl -w sunrpc.tcp_slot_table_entries=128
-
-images=(kube-proxy-amd64:v1.7.10 pause-amd64:3.0)
-for imageName in ${images[@]} ; do
-  docker pull registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName
-  docker tag registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName gcr.io/google_containers/$imageName
-  docker rmi registry.cn-hangzhou.aliyuncs.com/kube_containers/$imageName
-done
 
 kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
 ```
@@ -179,6 +178,20 @@ kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes/k
 #部署nginx-ingress
 kubectl apply -f https://raw.githubusercontent.com/inspireso/docker/kubernetes/kubernetes/google_containers/ingress-nginx.yaml
 
+```
+
+## helm
+
+```sh
+$ curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
+$ chmod 700 get_helm.sh
+$ ./get_helm.sh
+
+helm init --tiller-image=registry.cn-hangzhou.aliyuncs.com/kube_containers/tiller:latest --stable-repo-url https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts
+
+kubectl create serviceaccount --namespace kube-system tiller
+kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
 ```
 
 
@@ -246,5 +259,13 @@ echo "overlay" > /etc/modules-load.d/overlay.conf
 
 $ sed -i -e '/^ExecStart=/ s/$/ --storage-driver=overlay/' /usr/lib/systemd/system/docker.service \
 rm /var/lib/docker -rf
+```
+
+### 维护
+
+```sh
+kubectl cordon kuben6
+kubectl drain --ignore-daemonsets kuben6
+kubectl uncordon kuben6
 ```
 
