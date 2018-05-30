@@ -192,66 +192,104 @@ ss -antp|column -t
 curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
 yum install -y iperf
 
-# 启动服务端
-iperf -s -i 1 -w 448k
 
-# 启动客户端
-iperf -c 192.168.8.155 -i 1 -w 448k -t 60
+## 应用实例
+#使用 iperf -s 命令将 Iperf 启动为 server 模式:
+iperf –s
+————————————————————
+Server listening on TCP port 5001
+TCP window size: 8.00 KByte (default)
+————————————————————
+#启动客户端，向IP为10.230.48.65的主机发出TCP测试，并每2秒返回一次测试结果：
+iperf -c 10.230.48.65 -i 2
+
+#以Mbytes/sec为单位显示测试结果：
+iperf -c 10.230.48.65 -f M -i 2
+
+#设置TCP传输窗口大小为300K
+iperf -s -w 300K
+————————————————————
+Server listening on TCP port 5001
+TCP window size: 300 KByte
+———————————————————
+
+#测试传输约1MB数据
+iperf -c 59.125.103.56 -f K -i 2 -w 300K –n 1000000
+
+#测试持续36秒
+iperf -c 59.125.103.56 -f K -i 2 -w 300K –t 36
+
+#测试双向传输
+iperf -c 220.112.45.87 -f K -i 2 -w 300k -n 1000000 -d
+
+#UDP测试
+iperf -c 59.125.103.56 -f K -i 2 -w 300K –u
+
 ```
 
-> -s 以server模式启动。#iperf -s
+> -s 以server模式启动，eg：iperf –s 。Server端为数据的接收端。 
 >
-> -c host以client模式启动。host是server端地址。#iperf -c serverip
+> -D 以服务方式运行ipserf，eg：iperf -s -D 
+>
+> -R 停止iperf服务，针对-D，eg：iperf -s -R 
+>
+> -o <filename> 重定向输出到指定文件。 
+>
+> -c,--client <hostname/IP> 如果Iperf运行为服务器模式，则可利用-c参数指定一个客户端，本机将接受指定客户端的连接，但不支持UDP协议。 
+>
+> -P,--parallel #  设置Iperf服务模式下的最大连接数，默认值为0，表示不限制连接数量。 
+>
+> Iperf客户端选项 
+>
+> -b,--bandwidth 指定客户端通过UDP协议发送信息的带宽，默认值为1Mbit/s 
+>
+> -c,--client <hostname/IP> 指定Iperf服务器的主机名和IP地址　　
+>
+> -d,--dualtest 同时进行双向传输测试 
+>
+> -n,--num 指定传输的字节数，eg：iperf -c 222.35.11.23 -n 100000 
+>
+> -r,--tradeoff 单独进行双向传输测试 
+>
+> -t,--time 指定Iperf测试时间，默认10秒,eg：iperf -c 222.35.11.23 -t 5 
+>
+> -L,--listenport 指定一个端口，服务器将利用这个端口与客户机连接 
+>
+> -P, --parallel 设置Iperf客户端至Iperf服务器的连接数，默认值为1 
+>
+> -S, --tos  设置发出包的类型，具体类型请参阅man文档 
+>
+> -F 指定需要传输的文件 
+>
+> -T 指定ttl值 
 >
 > 通用参数：
 >
-> -b表示使用带宽数量
+> -f [kmKM] 分别表示以Kbits, Mbits, KBytes, MBytes显示报告，默认以Mbits为单位,eg：iperf -c 222.35.11.23 -f K 
 >
-> -f [kmKM] 分别表示以Kbits, Mbits, KBytes, MBytes显示报告，默认以Mbits为单位,#iperf -c 192.168.0.241 -f K
+> -i sec 以秒为单位显示报告间隔，eg：iperf -c 222.35.11.23 -i 2 
 >
-> -i sec 以秒为单位显示报告间隔，#iperf -c 192.168.0.241 -i 2
+> -l 缓冲区大小，默认是8KB,eg：iperf -c 222.35.11.23 -l 16 
 >
-> -l 缓冲区大小，默认是8KB,#iperf -c 192.168.0.241 -l 16
+> -m 显示tcp最大mtu 
 >
-> -m 显示tcp最大mtu值
+> -o 将报告和错误信息输出到文件eg：iperf -c 222.35.11.23 -o ciperflog.txt 
 >
-> -o 将报告和错误信息输出到文件#iperf -c 192.168.0.241 -ociperflog.txt
+> -p 指定服务器端使用的端口或客户端所连接的端口eg：iperf -s -p 9999;iperf -c 222.35.11.23 -p 9999 
 >
-> -p 指定服务器端使用的端口或客户端所连接的端口#iperf -s -p 9999;iperf -c 192.168.0.241-p 9999
+> -u 使用udp协议 
 >
-> -u 使用udp协议
+> -w 指定TCP窗口大小，默认是8KB 
 >
-> -w 指定TCP窗口大小，默认是8KB
+> -B 绑定一个主机地址或接口(当主机有多个地址或接口时使用该参数) 
 >
-> -B 绑定一个主机地址或接口（当主机有多个地址或接口时使用该参数）
+> -C 兼容旧版本(当server端和client端版本不一样时使用) 
 >
-> -C 兼容旧版本（当server端和client端版本不一样时使用）
+> -M 设定TCP数据包的最大mtu值 
 >
-> -M 设定TCP数据包的最大mtu值
+> -N 设定TCP不延时 
 >
-> -N 设定TCP不延时
->
-> -V 传输ipv6数据包
->
-> server专用参数：
->
-> -D 以服务方式运行。#iperf -s -D
->
-> -R 停止iperf服务。针对-D，#iperf -s -R
->
-> client端专用参数：
->
-> -d 同时进行双向传输测试
->
-> -n 指定传输的字节数，#iperf -c 192.168.0.241 -n 100000
->
-> -r 单独进行双向传输测试
->
-> -t 测试时间，默认20秒,#iperf -c 192.168.0.241-t 5
->
-> -F 指定需要传输的文件
->
-> -T 指定ttl值
+> -V 传输ipv6数据包 
 
 
 
@@ -287,6 +325,8 @@ team0             169071 0        188158 0       277902K 0        14949K 0
 ```sh
 #安装
 yum install -y glances
+#docker
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro --pid host --network host -it nicolargo/glances
 # 运行
 glances
 ```
@@ -374,6 +414,13 @@ iftop -N -n -i ens32
 按q退出监控。
 ```
 
+## bash-completion
+
+```
+yum install bash-completion
+echo "export TIME_STYLE='+%Y/%m/%d %H:%M:%S'" >> ~/.bash_profile
+```
+
 
 
 ## ssh
@@ -402,6 +449,38 @@ setenforce 0
 #setenforce 1 设置SELinux 成为enforcing模式
 #setenforce 0 设置SELinux 成为permissive模式
 ```
+
+## 用户
+
+```sh
+#sudoers 文件添加可写权限
+chmod -v u+w /etc/sudoers 
+#取消 sudoers 文件可写权限
+chmod -v u-w /etc/sudoers 
+#修改密码 
+
+passwd <UserName>
+#新建用户
+useradd -p <password> <UserName>
+#建工作组
+groupadd <GroupName>
+#新建用户同时增加工作组
+useradd -g <GroupName> <UserName>
+#给已有的用户增加工作组
+usermod -G <GroupName> <UserName> 或者：gpasswd -a <UserName> <GroupName>
+#切换当前会话到新 group 或者重启 X 会话
+newgrp - <GroupName>
+
+#用户列表文件：/etc/passwd
+#用户组列表文件：/etc/group
+#查看系统中有哪些用户：cut -d : -f 1 /etc/passwd
+#查看可以登录系统的用户：cat /etc/passwd | grep -v /sbin/nologin | cut -d : -f 1
+#查看某一用户：w 用户名
+#查看登录用户：who
+#查看用户登录历史记录：last
+```
+
+
 
 ## du
 
@@ -620,7 +699,12 @@ vi ~/.bashrc
 #alias rm='rm -i'
 alias rm=trash        
 alias rl='ls ~/.Trash'  
-alias ur=undelfile  
+alias ur=undelfile
+
+if [ ! -d ~/.Trash/ ]; then
+        mkdir ~/.Trash
+fi
+
 undelfile()  
 {  
   mv -i ~/.Trash/$@ ./  

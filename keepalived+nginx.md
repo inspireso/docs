@@ -97,6 +97,38 @@ events {
 }
 ```
 
+### 日志归档
+
+```sh
+cat <<EOF > /etc/logrotate.d/nginx
+/usr/local/nginx/logs/*access.log
+{
+    size    50M
+    rotate  1
+    missingok
+    nocreate
+    compress
+    copytruncate
+    nodelaycompress
+    notifempty
+}
+
+/usr/local/nginx/logs/*error.log
+{
+    size    50M
+    rotate  7
+    missingok
+    nocreate
+    compress
+    copytruncate
+    nodelaycompress
+    notifempty
+}
+EOF
+```
+
+
+
 ### 启动nginx
 
 ```sh

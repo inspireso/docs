@@ -261,3 +261,11 @@ $ sed -i -e '/^ExecStart=/ s/$/ --storage-driver=overlay/' /usr/lib/systemd/syst
 rm /var/lib/docker -rf
 ```
 
+### 维护
+
+```sh
+kubectl cordon kuben6
+kubectl drain --ignore-daemonsets kuben6
+kubectl uncordon kuben6
+```
+
