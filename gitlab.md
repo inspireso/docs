@@ -67,3 +67,46 @@ git remote add origin https://gitlab.ewinlu.com/unitrans/data-center.git
 git push --set-upstream origin master
 ```
 
+## docker-gc
+
+```sh
+#!/bin/bash
+
+EXCLUDE_FROM_GC=('registry.ewinlu.com/unitrans/docker-slim:latest' 'registry.ewinlu.com/unitrans/docker-maven/maven:3.5-jdk-8')
+
+# Remove all the dangling images
+docker rmi $(docker images -qf "dangling=true")
+
+# Get all the images currently in use
+USED_IMAGES=($( \
+    docker ps -a --format '{{.Image}}' | \
+    sort -u | \
+    uniq | \
+    awk -F ':' '$2{print $1":"$2}!$2{print $1":latest"}' \
+))
+
+# Get all the images currently available
+ALL_IMAGES=($( \
+    docker images --format '{{.Repository}}:{{.Tag}}' | \
+    sort -u \
+))
+
+# Remove the unused images
+for i in "${ALL_IMAGES[@]}"; do
+    UNUSED=true
+    for j in "${USED_IMAGES[@]}"; do
+        if [[ "$i" == "$j" ]]; then
+            UNUSED=false
+        fi
+    done
+    for k in "${EXCLUDE_FROM_GC[@]}"; do
+        if [[ "$i" == "$k" ]]; then
+            UNUSED=false
+        fi
+    done
+    if [[ "$UNUSED" == true ]]; then
+        docker rmi "$i"
+    fi
+done
+```
+

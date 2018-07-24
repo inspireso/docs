@@ -1,3 +1,5 @@
+# linux 
+
 ## 修改为阿里镜像库
 
 ```sh
@@ -142,7 +144,7 @@ nmcli con mod team0 ipv4.address '192.168.8.159/24' ipv4.gateway '192.168.8.254'
 #设置为手动模式
 nmcli con mod team0 ipv4.method manual
 #将两张物理网卡加入到team中
-nmcli con add type team-slave con-name team0-port1 ifname eno1 master team0
+nmcli con add type team-slave ifname eno1 master team0
 nmcli con add type team-slave con-name team0-port2 ifname eno2 master team0
 nmcli con add type team-slave con-name team0-port3 ifname eno3 master team0
 # nmcli con up team0
@@ -450,7 +452,7 @@ setenforce 0
 #setenforce 0 设置SELinux 成为permissive模式
 ```
 
-## 用户
+## user+group
 
 ```sh
 #sudoers 文件添加可写权限
@@ -480,15 +482,53 @@ newgrp - <GroupName>
 #查看用户登录历史记录：last
 ```
 
-
-
 ## du
 
 查看目录占用空间大小
 
 ```sh
-du /data -BM -d1
+du -sh /data
+
+du -h  --max-depth=1 /data
 ```
+
+## dd/fio
+
+```sh
+#随机读： 
+fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=randread -ioengine=psync -bs=16k -size=10G -numjobs=10 -runtime=1000 -group_reporting -name=randread
+
+#顺序读： 
+fio -filename=/dev/sdb1 -direct=1 -iodepth 1 -thread -rw=read -ioengine=psync -bs=16k -size=200G -numjobs=30 -runtime=1000 -group_reporting -name=read
+
+#随机写： 
+fio -filename=/dev/sdb1 -direct=1 -iodepth 1 -thread -rw=randwrite -ioengine=psync -bs=16k -size=200G -numjobs=30 -runtime=1000 -group_reporting -name=randwrite
+
+#顺序写： 
+fio -filename=/dev/sdb1 -direct=1 -iodepth 1 -thread -rw=write -ioengine=psync -bs=16k -size=200G -numjobs=30 -runtime=1000 -group_reporting -name=write
+
+#混合随机读写： 
+fio -filename=/dev/sdb1 -direct=1 -iodepth 1 -thread -rw=randrw -rwmixread=70 -ioengine=psync -bs=16k -size=1G -numjobs=10 -runtime=100 -group_reporting -name=randrw -ioscheduler=noop
+
+说明： 
+filename=/dev/sdb1       测试文件名称，通常选择需要测试的盘的data目录。 
+direct=1                 测试过程绕过机器自带的buffer。使测试结果更真实。 
+rw=randwrite             测试随机写的I/O 
+rw=randrw                测试随机写和读的I/O 
+bs=16k                   单次io的块文件大小为16k 
+bsrange=512-2048         同上，提定数据块的大小范围 
+size=5g    本次的测试文件大小为5g，以每次4k的io进行测试。 
+numjobs=30               本次的测试线程为30. 
+runtime=1000             测试时间为1000秒，如果不写则一直将5g文件分4k每次写完为止。 
+ioengine=psync           io引擎使用pync方式 
+rwmixwrite=30            在混合读写的模式下，写占30% 
+group_reporting          关于显示结果的，汇总每个进程的信息。
+
+## dd
+dd if=/dev/zero of=/tmp/test1.img bs= count=1 oflag=dsync
+```
+
+
 
 ## tar
 
@@ -627,6 +667,31 @@ logrotate -d /etc/logrotate.d/log-file
 
 #强制轮循
 logrotate -vf /etc/logrotate.d/log-file
+
+#参数
+compress 通过 gzip 压缩转储以后的日志
+nocompress 不需要压缩时，用这个参数
+copytruncate 用于还在打开中的日志文件，把当前日志备份并截断
+nocopytruncate 备份日志文件但是不截断
+create mode owner group 转储文件，使用指定的文件模式创建新的日志文件
+nocreate 不建立新的日志文件
+delaycompress 和 compress 一起使用时，转储的日志文件到下一次转储时才压缩
+nodelaycompress 覆盖 delaycompress 选项，转储同时压缩。
+errors address 专储时的错误信息发送到指定的 Email 地址
+ifempty 即使是空文件也转储，这个是 logrotate 的缺省选项。
+notifempty 如果是空文件的话，不转储
+mail address 把转储的日志文件发送到指定的 E-mail 地址
+nomail 转储时不发送日志文件
+olddir directory 转储后的日志文件放入指定的目录，必须和当前日志文件在同一个文件系统
+noolddir 转储后的日志文件和当前日志文件放在同一个目录下
+prerotate/endscript 在转储以前需要执行的命令可以放入这个对，这两个关键字必须单独成行
+postrotate/endscript 在转储以后需要执行的命令可以放入这个对，这两个关键字必须单独成行
+daily 指定转储周期为每天
+weekly 指定转储周期为每周
+monthly 指定转储周期为每月
+rotate count 指定日志文件删除之前转储的次数，0 指没有备份，5 指保留 5 个备份
+tabootext [+] list 让 logrotate 不转储指定扩展名的文件，缺省的扩展名是：.rpm-orig, .rpmsave, v, 和 ~ 
+size size 当日志文件到达指定的大小时才转储，Size 可以指定 bytes (缺省) 以及 KB (sizek) 或者 MB(sizem)
 ```
 
 ## curl
