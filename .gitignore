@@ -441,3 +441,4 @@ xcuserdata/
 *.xccheckout
 *.xcscmblueprint
 
+.obsidian/

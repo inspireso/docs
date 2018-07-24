@@ -65,12 +65,12 @@ docker exec -it gitlab-runner  gitlab-ci-multi-runner register  --locked=false
 
 ```sh
 #签出代码为git库
-git svn clone http://192.168.8.63/svn/dc -s --authors-file=users.txt
+git svn clone http://xxx.xxx.xxx.xxx/svn/project -s --authors-file=users.txt
 cd dc
 #再次更新到最新代码
 git svn fetch
 #添加git远程地址
-git remote add origin https://gitlab.youdomain.com/unitrans/data-center.git
+git remote add origin https://your.gitlabdomain.com/your-group/your-project.git
 #同步本地库到远程
 git push --set-upstream origin master
 ```
@@ -80,7 +80,7 @@ git push --set-upstream origin master
 ```sh
 #!/bin/bash
 
-EXCLUDE_FROM_GC=('registry.youdomain.com/docker/ci-tools:latest' 'registry.youdomain.com/docker/docker-maven/maven:3.5-jdk-8')
+EXCLUDE_FROM_GC=('registry.uutaka.com/docker/ci-tools:latest' 'registry.uutaka.com/docker/docker-maven/maven:3.5-jdk-8')
 
 # Remove all the dangling images
 docker rmi $(docker images -qf "dangling=true")
