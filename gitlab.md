@@ -1,4 +1,6 @@
-# [Gitlib](https://docs.gitlab.com/omnibus/)
+# [
+
+# Gitlib](https://docs.gitlab.com/omnibus/)
 
 ## 启动
 
@@ -51,6 +53,16 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
+## gitlab-runner
+
+```sh
+# 启动一个runner
+docker run --restart=always -d --name gitlab-runner -v /gitlab/runner:/etc/gitlab-runner  -v /var/run/docker.sock:/var/run/docker.sock gitlab/gitlab-runner:latest
+
+#注册,按照要求填写
+docker exec -it gitlab-runner  gitlab-ci-multi-runner register  --locked=false 
+```
+
 
 
 ## svn迁移到git
@@ -72,7 +84,7 @@ git push --set-upstream origin master
 ```sh
 #!/bin/bash
 
-EXCLUDE_FROM_GC=('registry.ewinlu.com/unitrans/docker-slim:latest' 'registry.ewinlu.com/unitrans/docker-maven/maven:3.5-jdk-8')
+EXCLUDE_FROM_GC=('registry.uutaka.com/docker/ci-tools:latest' 'registry.uutaka.com/docker/docker-maven/maven:3.5-jdk-8')
 
 # Remove all the dangling images
 docker rmi $(docker images -qf "dangling=true")
