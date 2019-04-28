@@ -1,18 +1,16 @@
-# [
-
-# Gitlib](https://docs.gitlab.com/omnibus/)
+# [Gitlib](https://docs.gitlab.com/omnibus/)
 
 ## 启动
 
 ```sh
 docker run -d \
-    -p 8443:443 --publish 80:80 --publish 2222:22 \
+    -p 5000:5000 -p 80:8081 -p 22:22 \
     --name gitlab \
     --restart always \
     -v $GITLAB_HOME/config:/etc/gitlab \
     -v $GITLAB_HOME/logs:/var/log/gitlab \
     -v $GITLAB_HOME/data:/var/opt/gitlab \
-    gitlab/gitlab-ce
+    gitlab/gitlab-ce:latest
 ```
 
 ## [配置](https://docs.gitlab.com/omnibus/)

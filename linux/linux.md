@@ -227,6 +227,10 @@ iperf -c 220.112.45.87 -f K -i 2 -w 300k -n 1000000 -d
 #UDP测试
 iperf -c 59.125.103.56 -f K -i 2 -w 300K –u
 
+#测试丢包
+iperf -s -u -i 2
+iperf -c 172.16.2.159 -u -b 200M -i2 -t 60
+
 ```
 
 > -s 以server模式启动，eg：iperf –s 。Server端为数据的接收端。 
@@ -433,6 +437,7 @@ ssh-keygen -t rsa
 
 chmod 700 ~/.ssh
 chmod 600 ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/config
 
 #设置免输入yes的known_hosts添加
 echo "StrictHostKeyChecking no" >> ~/.ssh/config
@@ -802,7 +807,23 @@ $ur helloworld
 #列出回收站
 $rl
 
-#清空回收站
+#清空回收
 cleartrash
 ```
+
+
+
+## FAQ
+
+### No space left on device – running out of Inodes
+
+```sh
+#查看inode使用情况
+df -i
+#统计具体目录的文件个数
+find /tmp | wc -l
+#删除对应的小文件
+```
+
+
 
