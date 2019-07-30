@@ -25,7 +25,7 @@
   KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
   curl -sSk -H "Authorization: Bearer $KUBE_TOKEN" \    https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_PORT_443_TCP_PORT/api/v1/namespaces/default/pods/$HOSTNAME
   ```
-  ​
+  
 
 ### apiserver证书
 
@@ -163,6 +163,24 @@ done
 ```
 
 
+
+## Terminating
+
+删除namespace后，出现namespace一直处于Terminating状态
+
+```sh
+#导出名称空间对象描述
+kubectl get namespace <ns> -o json > tmp.json
+#修改状态
+vi tmp.json
+#删除spec中的内容
+
+#开启另一个窗口
+kubectl proxy --port=8081
+
+#调用api更新namespace对象
+curl -k -H "Content-Type: application/json" -X PUT --data-binary @tmp.json http://127.0.0.1:8081/api/v1/namespaces/<ns>/finalize
+```
 
 
 

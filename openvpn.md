@@ -13,7 +13,7 @@ useradd -g openvpn -M -s /sbin/nologin openvpn
 
 mkdir /etc/openvpn/
 cp -R /usr/share/easy-rsa/ /etc/openvpn/
-cp /usr/share/doc/openvpn-2.4.4/sample/sample-config-files/server.conf /etc/openvpn/
+cp /usr/share/doc/openvpn-2.4.7/sample/sample-config-files/server.conf /etc/openvpn/
 cp -r /usr/share/doc/easy-rsa-3.0.3/vars.example /etc/openvpn/easy-rsa/3.0/vars
 
 ```
@@ -23,6 +23,7 @@ cp -r /usr/share/doc/easy-rsa-3.0.3/vars.example /etc/openvpn/easy-rsa/3.0/vars
 ### vi /etc/openvpn/server.conf
 
 ```sh
+cat <<EOF > /etc/openvpn/server.conf
 port 8443
 proto udp
 dev tun
@@ -46,6 +47,8 @@ status openvpn-status.log
 log-append  openvpn.log
 verb 3
 mute 20
+explicit-exit-notify 1
+EOF
 ```
 
 ### vi /etc/openvpn/easy-rsa/3.0/vars
@@ -57,8 +60,8 @@ set_var EASYRSA                 "$PWD"
 set_var EASYRSA_PKI             "$EASYRSA/pki"
 set_var EASYRSA_DN     			"cn_only"
 set_var EASYRSA_REQ_COUNTRY     "CN"
-set_var EASYRSA_REQ_PROVINCE    "FUJIAN"
-set_var EASYRSA_REQ_CITY        "XIAMEN"
+set_var EASYRSA_REQ_PROVINCE    "HONGKONG"
+set_var EASYRSA_REQ_CITY        "HONGKONG"
 set_var EASYRSA_REQ_ORG         "OpenVPN CERTIFICATE AUTHORITY"
 set_var EASYRSA_REQ_EMAIL       "110@qq.com"
 set_var EASYRSA_REQ_OU          "OpenVPN EASY CA"
@@ -102,10 +105,12 @@ Common Name: openvpn
 vi /etc/sysconfig/iptables, 添加如下规则
 
 ```sh
-## 开通8443端口
--A INPUT -p udp -m state --state NEW -m udp --dport 8443 -j ACCEPT
-## 允许转发
--A POSTROUTING -s 10.8.0.0/24 -o ens192 -j MASQUERADE
+cat <<EOF >> /etc/rc.d/rc.local
+iptables -A INPUT -p udp -m state --state NEW -m udp --dport 8443 -j ACCEPT
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j MASQUERADE
+EOF
+chmod +x /etc/rc.d/rc.local
+systemctl enable rc-local.service && systemctl start rc-local.service
 ```
 
 ### 开启转发功能

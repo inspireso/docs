@@ -17,12 +17,20 @@ sudo systemctl start docker
 ## [配置](https://docs.gitlab.com/omnibus/)
 
 ```sh
-cat <<EOF > /etc/docker/daemon.json
+mkdir -p /etc/docker
+cat <<EOF >  /etc/docker/daemon.json
 {
-  "bip": "10.16.0.1/24",
-  "fixed-cidr": "10.16.0.0/24",
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2",
+  "storage-opts": [
+    "overlay2.override_kernel_check=true"
+  ],
   "selinux-enabled": false,
-  "registry-mirrors": ["https://w6gp6d0a.mirror.aliyuncs.com"]
+  "registry-mirrors": ["https://k4azpinc.mirror.aliyuncs.com"]
 }
 EOF
 ```
