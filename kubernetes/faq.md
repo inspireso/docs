@@ -365,6 +365,52 @@ kubectl proxy --port=8081
 curl -k -H "Content-Type: application/json" -X PUT --data-binary @tmp.json http://127.0.0.1:8081/api/v1/namespaces/<ns>/finalize
 ```
 
+### 获取kubeadm join 命令
+
+```sh
+#master
+kubeadm token create --config kubeadm.yaml --print-join-command
+
+```
+
+### networks have same bridge namer
+
+```sh
+ ip link del docker0 && rm -rf /var/docker/network/* && mkdir -p /var/docker/network/files
+ systemctl start docker
+ # delete all containers
+ docker rm -f $(docker ps -a -q)
+```
+
+### master node->work load
+
+```sh
+$ kubectl taint nodes --all dedicated-
+$ kubectl taint nodes kuben1 kube
+```
+
+### node ->  unschedulable
+
+```sh
+$ kubectl taint nodes kuben-master dedicated=master:NoSchedule
+```
+
+### reset
+
+```sh
+$ kubeadm reset
+$ rm /var/etcd/ -rf
+$ docker rm -f $(docker ps -a -q)
+```
+
+### 维护
+
+```sh
+kubectl cordon kube-worker1
+kubectl drain --ignore-daemonsets kube-worker1
+kubectl uncordon kube-worker1
+```
+
 
 
 ## [参考](https://github.com/kelseyhightower/kubernetes-the-hard-way/issues/248)
