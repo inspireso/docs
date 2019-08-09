@@ -10,28 +10,73 @@ kernel: 3.10.0-693.el7.x86_64 #1 SMP Tue Aug 22 21:09:27 UTC 2017 x86_64 x86_64 
 ## 准备工作
 
 ```sh
+#更改镜像为阿里镜像
+mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
+curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+
 #卸载防火墙
 systemctl stop firewalld && sudo systemctl disable firewalld && yum remove -y firewalld
 
 #内核参数设置
 setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
-cat <<EOF >  /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
+cat <<EOF >>  /etc/security/limits.conf
+root soft nofile 65535
+root hard nofile 65535
+* soft nofile 65535
+* hard nofile 65535
+EOF
+
+cat <<EOF >>  /etc/sysctl.conf
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
-net.ipv4.ip_forward = 1"
+
+vm.swappiness = 0
+net.ipv4.neigh.default.gc_stale_time=120
+
+# see details in https://help.aliyun.com/knowledge_detail/39428.html
+net.ipv4.conf.all.rp_filter=0
+net.ipv4.conf.default.rp_filter=0
+net.ipv4.conf.default.arp_announce = 2
+net.ipv4.conf.lo.arp_announce=2
+net.ipv4.conf.all.arp_announce=2
+
+# see details in https://help.aliyun.com/knowledge_detail/41334.html
+net.ipv4.tcp_max_tw_buckets = 5000
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_max_syn_backlog = 1024
+net.ipv4.tcp_synack_retries = 2
+kernel.sysrq=1
+EOF
+
+cat <<EOF >  /etc/sysctl.d/99-k8s.conf
+kernel.softlockup_all_cpu_backtrace=1
+kernel.softlockup_panic=1
+vm.max_map_count=262144
+
+net.core.wmem_max=16777216
+net.core.somaxconn=32768
+net.core.netdev_max_backlog=16384
+net.core.rmem_max=16777216
+
+fs.inotify.max_user_watches=524288
+fs.file-max=2097152
+fs.inotify.max_user_instances=8192
+fs.inotify.max_queued_events=16384
+fs.may_detach_mounts=1
+
+net.ipv4.tcp_slow_start_after_idle=0
+net.ipv4.tcp_wmem=4096 12582912 16777216
+net.ipv4.ip_forward=1
+net.ipv4.tcp_max_syn_backlog=8096
+net.ipv4.tcp_rmem=4096 12582912 16777216
+net.bridge.bridge-nf-call-iptables=1
 EOF
 sysctl -p
 
-#更改镜像为阿里镜像
-mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
-curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
-
 #安装指定版本的docker-ce
-yum install -y yum-utils device-mapper-persistent-data lvm2
+yum install -y yum-utils
 yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
 yum makecache fast
 yum -y install docker-ce-18.09.6-3.el7

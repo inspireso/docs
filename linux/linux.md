@@ -194,7 +194,6 @@ ss -antp|column -t
 curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
 yum install -y iperf
 
-
 ## 应用实例
 #使用 iperf -s 命令将 Iperf 启动为 server 模式:
 iperf –s
@@ -206,7 +205,7 @@ TCP window size: 8.00 KByte (default)
 iperf -c 10.230.48.65 -i 2
 
 #以Mbytes/sec为单位显示测试结果：
-iperf -c 10.230.48.65 -f M -i 2
+iperf -c 10.230.48.65  
 
 #设置TCP传输窗口大小为300K
 iperf -s -w 300K
