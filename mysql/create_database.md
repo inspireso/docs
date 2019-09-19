@@ -56,7 +56,7 @@ GRANT privileges ON databasename.tablename TO 'username'@'host'
 
 > **说明**
 >
-> privileges：用户的操作权限，如`SELECT`，`INSERT`，`UPDATE`等，如果要授予所的权限则使用`ALL`
+> privileges：用户的操作权限，如`SELECT`，`INSERT`，`UPDATE`,  `index `, `create temporary tables`, `references `, `create view`, `show view`,`create routine`, `alter routine` ,`execute`等，如果要授予所的权限则使用`ALL`
 >
 > databasename：数据库名
 >

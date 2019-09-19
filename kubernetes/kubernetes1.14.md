@@ -28,26 +28,28 @@ root hard nofile 65535
 EOF
 
 cat <<EOF >>  /etc/sysctl.conf
-net.ipv6.conf.all.disable_ipv6 = 1
-net.ipv6.conf.default.disable_ipv6 = 1
-net.ipv6.conf.lo.disable_ipv6 = 1
+net.ipv6.conf.all.disable_ipv6=1
+net.ipv6.conf.default.disable_ipv6=1
+net.ipv6.conf.lo.disable_ipv6=1
 
-vm.swappiness = 0
+vm.swappiness=0
 net.ipv4.neigh.default.gc_stale_time=120
 
 # see details in https://help.aliyun.com/knowledge_detail/39428.html
 net.ipv4.conf.all.rp_filter=0
 net.ipv4.conf.default.rp_filter=0
-net.ipv4.conf.default.arp_announce = 2
+net.ipv4.conf.default.arp_announce=2
 net.ipv4.conf.lo.arp_announce=2
 net.ipv4.conf.all.arp_announce=2
 
 # see details in https://help.aliyun.com/knowledge_detail/41334.html
-net.ipv4.tcp_max_tw_buckets = 5000
-net.ipv4.tcp_syncookies = 1
-net.ipv4.tcp_max_syn_backlog = 1024
-net.ipv4.tcp_synack_retries = 2
+net.ipv4.tcp_max_tw_buckets=5000
+net.ipv4.tcp_syncookies=1
+net.ipv4.tcp_max_syn_backlog=1024
+net.ipv4.tcp_synack_retries=2
 kernel.sysrq=1
+
+kernel.pid_max=65535
 EOF
 
 cat <<EOF >  /etc/sysctl.d/99-k8s.conf
@@ -93,7 +95,7 @@ repo_gpgcheck=1
 gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 EOF
 yum makecache fast
-yum install -y kubelet-1.14.3-0 kubeadm-1.14.3-0 kubectl-1.14.3-0
+yum install -y kubelet-1.14.5-0 kubeadm-1.14.5-0 kubectl-1.14.5-0
 systemctl enable kubelet && systemctl start kubelet
 
 # 配置docker
@@ -189,6 +191,10 @@ kubectl describe -n kube-system secret/kubernetes-dashboard-admin-token-XXX
 ## node
 
 ```sh
+#master
+kubeadm token create --config kubeadm.yaml --print-join-command
+
+#node
 docker pull registry.cn-hangzhou.aliyuncs.com/ates-k8s/flannel:v0.11.0-amd64
 yum install -y nfs-utils
 
