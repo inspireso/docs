@@ -21,10 +21,10 @@ systemctl stop firewalld && sudo systemctl disable firewalld && yum remove -y fi
 setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
 cat <<EOF >>  /etc/security/limits.conf
-root soft nofile 65535
-root hard nofile 65535
-* soft nofile 65535
-* hard nofile 65535
+root soft nofile 1024000
+root hard nofile 1024000
+* soft nofile 1024000
+* hard nofile 1024000
 EOF
 
 cat <<EOF >>  /etc/sysctl.conf
@@ -77,6 +77,26 @@ net.bridge.bridge-nf-call-iptables=1
 EOF
 sysctl -p
 
+# 加载ipvs相关模块
+modprobe -- ip_vs
+modprobe -- ip_vs_rr
+modprobe -- ip_vs_wrr
+modprobe -- ip_vs_sh
+modprobe -- nf_conntrack_ipv4
+#检查是否加载成功
+lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+## 配置启动加载ipvs依赖的模块
+cat <<EOF > /etc/sysconfig/modules/ipvs.modules 
+#!/bin/bash
+modprobe -- ip_vs
+modprobe -- ip_vs_rr
+modprobe -- ip_vs_wrr
+modprobe -- ip_vs_sh
+modprobe -- nf_conntrack_ipv4
+EOF
+#安装ipvs管理工具
+yum install -y ipset ipvsadm
+
 #安装指定版本的docker-ce
 yum install -y yum-utils
 yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
@@ -112,7 +132,8 @@ cat <<EOF >  /etc/docker/daemon.json
     "overlay2.override_kernel_check=true"
   ],
   "selinux-enabled": false,
-  "registry-mirrors": ["https://k4azpinc.mirror.aliyuncs.com"]
+  "registry-mirrors": ["https://k4azpinc.mirror.aliyuncs.com"],
+  "bip": "10.16.0.0/16"
 }
 EOF
 systemctl enable docker && systemctl restart docker
@@ -147,11 +168,14 @@ bootstrapTokens:
 - groups:
   ttl: "0"
 ---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: "ipvs"
+---
 apiVersion: kubeadm.k8s.io/v1beta1
 imageRepository: "registry.aliyuncs.com/google_containers"
 kind: ClusterConfiguration
-kubernetesVersion: v1.14.2
-mode: ipvs
+kubernetesVersion: v1.14.5
 networking:
   dnsDomain: cluster.local
   podSubnet: 10.244.0.0/16
@@ -161,8 +185,27 @@ EOF
 kubeadm init --config kubeadm.yaml
 
 #生产环境: 使用flannel
-kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/62e44c867a2846fefb68bd5f178daf4da3095ccb/Documentation/kube-flannel.yml
+curl -o kube-flannel.yml https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 
+#启用flannel的gw模式;编辑下载的kube-flannel.yml 文件，找到net-conf.json:配置，修改如下：
+  net-conf.json: |
+    {
+      "Network": "10.244.0.0/16",
+      "Backend": {
+        "Type": "vxlan"
+      }
+    }
+修改为：
+  net-conf.json: |
+    {
+      "Network": "10.244.0.0/16",
+      "Backend": {
+        "Type": "vxlan",
+        "Directrouting": true
+      }
+    }
+
+kubectl apply -f kube-flannel.yml
 ```
 
 ### dashboard
@@ -211,20 +254,6 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/ngin
 
 ```
 
-## helm
-
-```sh
-$ curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
-$ chmod 700 get_helm.sh
-$ ./get_helm.sh
-
-helm init --tiller-image=registry.cn-hangzhou.aliyuncs.com/kube_containers/tiller:latest --stable-repo-url https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts
-
-kubectl create serviceaccount --namespace kube-system tiller
-kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
-```
-
 
 
 ## FAQ
@@ -271,7 +300,7 @@ $ docker rm -f $(docker ps -a -q)
 
 ```sh
 kubectl cordon kube-worker1
-kubectl drain --ignore-daemonsets kube-worker1
+kubectl drain --ignore-daemonsets --delete-local-data  kube-worker1
 kubectl uncordon kube-worker1
 ```
 
