@@ -86,14 +86,19 @@ modprobe -- nf_conntrack_ipv4
 #检查是否加载成功
 lsmod | grep -e ip_vs -e nf_conntrack_ipv4
 ## 配置启动加载ipvs依赖的模块
-cat <<EOF > /etc/sysconfig/modules/ipvs.modules 
-#!/bin/bash
+cat <<EOF > /etc/sysconfig/modules/ipvs.modules
+#!/bin/sh
 modprobe -- ip_vs
 modprobe -- ip_vs_rr
 modprobe -- ip_vs_wrr
 modprobe -- ip_vs_sh
 modprobe -- nf_conntrack_ipv4
 EOF
+echo "/etc/sysconfig/modules/ipvs.modules" >> /etc/rc.local
+chmod +x /etc/rc.local && systemctl enable rc-local.service
+
+chmod +x /etc/sysconfig/modules/ipvs.modules && bash /etc/sysconfig/modules/ipvs.modules && lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+
 #安装ipvs管理工具
 yum install -y ipset ipvsadm
 
@@ -115,7 +120,7 @@ repo_gpgcheck=1
 gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 EOF
 yum makecache fast
-yum install -y kubelet-1.14.5-0 kubeadm-1.14.5-0 kubectl-1.14.5-0
+yum install -y kubelet-1.14.8-0 kubeadm-1.14.8-0 kubectl-1.14.8-0
 systemctl enable kubelet && systemctl start kubelet
 
 # 配置docker
@@ -133,7 +138,7 @@ cat <<EOF >  /etc/docker/daemon.json
   ],
   "selinux-enabled": false,
   "registry-mirrors": ["https://k4azpinc.mirror.aliyuncs.com"],
-  "bip": "10.16.0.0/16"
+  "bip": "10.16.0.1/16"
 }
 EOF
 systemctl enable docker && systemctl restart docker
@@ -175,7 +180,7 @@ mode: "ipvs"
 apiVersion: kubeadm.k8s.io/v1beta1
 imageRepository: "registry.aliyuncs.com/google_containers"
 kind: ClusterConfiguration
-kubernetesVersion: v1.14.5
+kubernetesVersion: v1.14.8
 networking:
   dnsDomain: cluster.local
   podSubnet: 10.244.0.0/16
