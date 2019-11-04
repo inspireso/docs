@@ -102,7 +102,7 @@ wrk.headers["Content-Type"] = "application/x-www-form-urlencoded"
 wrk.body = "youbody&youset"
 ```
 
-**参数说明**
+参数说明**
 
 -c：总的连接数（每个线程处理的连接数=总连接数/线程数）
 -d：测试的持续时间，如2s(2second)，2m(2minute)，2h(hour)，默认为s
@@ -122,3 +122,140 @@ Stdev：标准差
 +/- Stdev： 正负一个标准差占比
 Requests/sec：每秒请求数（也就是QPS），等于总请求数/测试总耗时
 Latency Distribution，如果命名中添加了—latency就会出现相关信息
+
+## lua脚本说明
+
+wrk 压测脚本有3个生命周期, 分别是 启动阶段,运行阶段和结束阶段,每个线程都有自己的lua运行环境
+
+
+
+### 启动阶段
+
+```sh
+function setup(thread)
+在脚本文件中实现setup方法，wrk就会在测试线程已经初始化但还没有启动的时候调用该方法。wrk会为每一个测试线程调用一次setup方法，并传入代表测试线程的对象thread作为参数。setup方法中可操作该thread对象，获取信息、存储信息、甚至关闭该线程。
+-- thread提供了1个属性，3个方法
+-- thread.addr 设置请求需要打到的ip
+-- thread:get(name) 获取线程全局变量
+-- thread:set(name, value) 设置线程全局变量
+-- thread:stop() 终止线程
+
+```
+
+### 运行阶段
+
+```sh
+function init(args)
+-- 每个线程仅调用1次，args 用于获取命令行中传入的参数, 例如 --env=pre
+
+function delay()
+-- 每次请求调用1次，发送下一个请求之前的延迟, 单位为ms
+
+function request()
+-- 每次请求调用1次，返回http请求
+
+function response(status, headers, body)
+-- 每次请求调用1次，返回http响应
+
+init由测试线程调用，只会在进入运行阶段时，调用一次。支持从启动wrk的命令中，获取命令行参数； delay在每次发送request之前调用，如果需要delay，那么delay相应时间； request用来生成请求；每一次请求都会调用该方法，所以注意不要在该方法中做耗时的操作； reponse在每次收到一个响应时调用；为提升性能，如果没有定义该方法，那么wrk不会解析headers和body；
+结束阶段
+
+```
+
+### 结束阶段
+
+```sh
+function done(summary, latency, requests)
+
+
+latency.min              -- minimum value seen
+latency.max              -- maximum value seen
+latency.mean             -- average value seen
+latency.stdev            -- standard deviation
+latency:percentile(99.0) -- 99th percentile value
+latency(i)               -- raw value and count
+
+summary = {
+  duration = N,  -- run duration in microseconds
+  requests = N,  -- total completed requests
+  bytes    = N,  -- total bytes received
+  errors   = {
+    connect = N, -- total socket connection errors
+    read    = N, -- total socket read errors
+    write   = N, -- total socket write errors
+    status  = N, -- total HTTP status codes > 399
+    timeout = N  -- total request timeouts
+  }
+}
+
+该方法在整个测试过程中只会调用一次，可从参数给定的对象中，获取压测结果，生成定制化的测试报告。
+```
+
+### 线程变量
+
+```sh
+wrk = {
+    scheme  = "http",
+    host    = "localhost",
+    port    = nil,
+    method  = "GET",
+    path    = "/",
+    headers = {},
+    body    = nil,
+    thread  = <userdata>,
+}
+
+-- 生成整个request的string，例如：返回
+-- GET / HTTP/1.1
+-- Host: tool.lu
+function wrk.format(method, path, headers, body)
+-- method: http方法, 如GET/POST/DELETE 等
+-- path:   url的路径, 如 /index, /index?a=b&c=d
+-- headers: 一个header的table
+-- body:    一个http body, 字符串类型
+
+-- 获取域名的IP和端口，返回table，例如：返回 `{127.0.0.1:80}`
+function wrk.lookup(host, service)
+-- host:一个主机名或者地址串(IPv4的点分十进制串或者IPv6的16进制串)
+-- service：服务名可以是十进制的端口号，也可以是已定义的服务名称，如ftp、http等
+
+
+-- 判断addr是否能连接，例如：`127.0.0.1:80`，返回 true 或 false
+function wrk.connect(addr)
+```
+
+每个request的参数都不一样
+```lua
+request = function()
+   uid = math.random(1, 10000000)
+   path = "/test?uid=" .. uid
+   return wrk.format(nil, path)
+end
+
+解释一下wrk.format这个函数
+wrk.format这个函数的作用,根据参数和全局变量wrk生成一个http请求
+函数签名: 
+function wrk.format(method, path, headers, body)
+method:http方法,比如GET/POST等
+path: url上的路径(含函数)
+headers: http header
+body: http body
+
+```
+
+发送JSON
+
+```lua
+request = function()
+    local headers = { }
+    headers['Content-Type'] = "application/json"
+    body = {
+        mobile={"1533899828"},
+        params={code=math.random(1000,9999)}
+    }
+
+    local cjson = require("cjson")
+    body_str = cjson.encode(body)
+    return wrk.format('POST', nil, headers, body_str)
+end
+```
