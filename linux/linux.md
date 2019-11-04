@@ -196,7 +196,7 @@ yum install -y iperf
 
 ## 应用实例
 #使用 iperf -s 命令将 Iperf 启动为 server 模式:
-iperf –s
+iperf -s
 ————————————————————
 Server listening on TCP port 5001
 TCP window size: 8.00 KByte (default)
@@ -334,6 +334,15 @@ yum install -y glances
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro --pid host --network host -it nicolargo/glances
 # 运行
 glances
+
+#docker
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro --pid host --network host -it docker.io/nicolargo/glances
+
+#配置alias
+cat <<EOF >>  ~/.bashrc
+alias glances='docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro --pid host --network host -it docker.io/nicolargo/glances'
+EOF
+
 ```
 
 
