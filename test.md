@@ -86,6 +86,18 @@ ab -c 10 -n 100 http://www.test.api.com/test/login?userName=test&password=test
 ```sh
 yum install -y https://extras.getpagespeed.com/release-el7-latest.rpm
 yum install -y wrk
+
+//OR
+
+yum groupinstall 'Development Tools'
+yum install -y openssl-devel git 
+git clone https://github.com/wg/wrk.git wrk
+cd wrk
+make
+# move the executable to somewhere in your PATH
+cp wrk /usr/local/bin
+chmod +x /usr/local/bin/wrk
+
 ```
 
 ## 使用
