@@ -819,6 +819,45 @@ $rl
 cleartrash
 ```
 
+## chronyd
+
+```sh
+yum -y install chrony
+
+vi /etc/chrony.conf
+#在行首添加
+server ntp.aliyun.com iburst
+
+#开机自动启动，并启动服务
+systemctl enable chronyd
+systemctl start chronyd
+
+```
+
+## NTP
+
+```sh
+yum -y install ntp
+ 
+vi /etc/ntp.conf
+
+driftfile  /var/lib/ntp/drift
+pidfile   /var/run/ntpd.pid
+logfile /var/log/ntp.log
+restrict    default kod nomodify notrap nopeer noquery
+restrict -6 default kod nomodify notrap nopeer noquery
+restrict 127.0.0.1
+server 127.127.1.0
+fudge  127.127.1.0 stratum 10
+server ntp.aliyun.com iburst minpoll 4 maxpoll 10
+restrict ntp.aliyun.com nomodify notrap nopeer noquery
+
+#开机自动启动，并启动服务
+systemctl enable ntpd
+systemctl start ntpd
+
+```
+
 
 
 ## FAQ
