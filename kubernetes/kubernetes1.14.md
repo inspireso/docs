@@ -77,15 +77,7 @@ net.bridge.bridge-nf-call-iptables=1
 EOF
 sysctl -p
 
-# 加载ipvs相关模块
-modprobe -- ip_vs
-modprobe -- ip_vs_rr
-modprobe -- ip_vs_wrr
-modprobe -- ip_vs_sh
-modprobe -- nf_conntrack_ipv4
-#检查是否加载成功
-lsmod | grep -e ip_vs -e nf_conntrack_ipv4
-## 配置启动加载ipvs依赖的模块
+#加载ipvs相关模块
 cat <<EOF > /etc/sysconfig/modules/ipvs.modules
 #!/bin/sh
 modprobe -- ip_vs
@@ -94,10 +86,7 @@ modprobe -- ip_vs_wrr
 modprobe -- ip_vs_sh
 modprobe -- nf_conntrack_ipv4
 EOF
-echo "/etc/sysconfig/modules/ipvs.modules" >> /etc/rc.local
-chmod +x /etc/rc.local && systemctl enable rc-local.service
-
-chmod +x /etc/sysconfig/modules/ipvs.modules && bash /etc/sysconfig/modules/ipvs.modules && lsmod | grep -e ip_vs -e nf_conntrack_ipv4
+chmod +x /etc/sysconfig/modules/ipvs.modules && sh /etc/sysconfig/modules/ipvs.modules && lsmod | grep -e ip_vs -e nf_conntrack_ipv4
 
 #安装ipvs管理工具
 yum install -y ipset ipvsadm
