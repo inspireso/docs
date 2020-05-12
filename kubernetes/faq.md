@@ -1,4 +1,4 @@
-## 更换证书(1)
+## 更换证书
 
 整体步骤如下：
 
@@ -116,8 +116,8 @@ openssl req -new \
 	-config worker-openssl.cnf
 openssl x509 -req \
 	-in "kubelet-${WORKER_HOSTNAME}.csr" \
-	-CA ca.crt \
-	-CAkey ca.key -CAcreateserial \
+	-CA ca.pem \
+	-CAkey ca-key.pem -CAcreateserial \
 	-out "kubelet-${WORKER_HOSTNAME}.pem" \
 	-days 3650 \
 	-extensions v3_req \
@@ -125,99 +125,6 @@ openssl x509 -req \
 
 openssl x509  -noout -text -in "kubelet-${WORKER_HOSTNAME}.pem"
 ```
-
-## 更新证书(2)
-
-### master
-
-以下操作在master节点上执行
-
-```sh
-export K8S_CERT_DIR=/etc/kubernetes/pki
-export ETCD_CERT_DIR=/etc/kubernetes/pki/etcd
-export KUBELET_CERT_DIR=/var/lib/kubelet/pki
-
-## 校验证书是否过期
-for crt in ${K8S_CERT_DIR}/*.crt; do
-    expirationDate=$(openssl x509 -noout -text -in ${crt} | grep After | sed -e 's/^[[:space:]]*//')
-    echo "$(basename ${crt}) -- ${expirationDate}"
-done
-
-for crt in $(ls ${ETCD_CERT_DIR}/*.crt | grep -v 'key'); do
-    expirationDate=$(openssl x509 -noout -text -in ${crt} | grep After | sed -e 's/^[[:space:]]*//')
-    echo "$(basename ${crt}) -- ${expirationDate}"
-done
-
-echo "kubelet-client-current.pem -- $(openssl x509 -noout -text -in ${KUBELET_CERT_DIR}/kubelet-client-current.pem | grep After | sed -e 's/^[[:space:]]*//')"
-
-echo "kubelet.crt -- $(openssl x509 -noout -text -in ${KUBELET_CERT_DIR}/kubelet.crt | grep After | sed -e 's/^[[:space:]]*//')"
-
-# MASTER: api-server cert
-echo -n | openssl s_client -connect localhost:6443 2>&1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text -noout | grep Not
-
-# MASTER: controller-manager cert
-echo -n | openssl s_client -connect localhost:10257 2>&1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text -noout | grep Not
-
-# MASTER: scheduler cert
-echo -n | openssl s_client -connect localhost:10259 2>&1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text -noout | grep Not
-
-# MASTER: kubelet cert
-echo -n | openssl s_client -connect localhost:10250 2>&1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text -noout | grep Not
-
-## 备份
-cd /etc/kubernetes
-
-cp admin.conf admin.conf.bkp
-cp controller-manager.conf controller-manager.conf.bkp
-cp scheduler.conf scheduler.conf.bkp
-cp kubelet.conf kubelet.conf.bkp
-
-## 重新生成证书
-kubeadm alpha certs renew apiserver
-kubeadm alpha certs renew apiserver-kubelet-client
-kubeadm alpha certs renew front-proxy-client
-# 查看生成的证书
-ls -al ./pki
-
-## 重新生成账户访问 api-server 的配置文件
-kubeadm alpha kubeconfig user --org system:masters --client-name kubernetes-admin  > /etc/kubernetes/admin.conf
-
-kubeadm alpha kubeconfig user --client-name system:kube-controller-manager > /etc/kubernetes/controller-manager.conf
-
-kubeadm alpha kubeconfig user --client-name system:kube-scheduler > /etc/kubernetes/scheduler.conf
-
-kubeadm alpha kubeconfig user --org system:nodes --client-name system:node:$(hostname) > /etc/kubernetes/kubelet.conf
-
-##Now that certificates and configuration files are in place, the control plane must be restarted. They typically run in containers, so the easiest way to trigger a restart, is to kill the processes running in there. Use (1) to verify, that the expiration dates indeed have been changed.
-kill -s SIGHUP $(pidof kube-apiserver)
-kill -s SIGHUP $(pidof kube-controller-manager)
-kill -s SIGHUP $(pidof kube-scheduler)
-
-## kubelet
-
-
-```
-
-### worker
-
-```sh
-### 在 WORKER 节点上执行
-export KUBELET_CERT_DIR=/var/lib/kubelet/pki
-
-## 校验证书是否过期
-echo "kubelet.crt -- $(openssl x509 -noout -text -in ${KUBELET_CERT_DIR}/kubelet.crt | grep After | sed -e 's/^[[:space:]]*//')"
-
-echo "kubelet-client-current.pem -- $(openssl x509 -noout -text -in ${KUBELET_CERT_DIR}/kubelet-client-current.pem | grep After | sed -e 's/^[[:space:]]*//')"
-
-### 在 MASTER 节点上执行
-## 重新生成证书
-export WORKER_HOSTNAME="<your_worker_hostname>"
-kubeadm alpha kubeconfig user --org system:nodes --client-name system:node:$WORKER_HOSTNAME > "/etc/kubernetes/kubelet-$WORKER_HOSTNAME.conf"
-```
-
-
-
-
 
 ## GC
 
@@ -255,30 +162,10 @@ for i in "${ALL_IMAGES[@]}"; do
 done
 ```
 
-## 清理pod
+## Evicted 
 
 ```sh
-kubectl get pods --all-namespaces | grep Evicted  | awk '{print "-n", $1, $2}' | xargs kubectl delete pod 
-
-kubectl get pods --all-namespaces | grep -v Running | awk '{print "-n", $1, $2}' | xargs kubectl delete pod 
-
-kubectl get pods --all-namespaces | grep Terminating | awk '{print "-n", $1, $2}' | xargs kubectl delete --force --grace-period=0 pod 
-```
-
-
-
-## 查找容器
-
-```sh
-lsof -n |awk '{print $2}'|sort|uniq -c |sort -nr|more
-
-docker inspect -f '{{.State.Pid}}' ContainerID
-docker top ContainerID
-
-ps auxwwf > ps.txt
-<PID>
-
-docker inspect e5ee276363335d332e71639afa4876b8886ab9151e4e7e55d733bd7782bd15a8
+kubectl get pods | grep Evicted | awk '{print $1}' | xargs kubectl delete pod
 ```
 
 
@@ -340,70 +227,6 @@ $ docker rm -f $(docker ps -a -q)
 ```
 
 ## 维护
-
-```sh
-kubectl cordon kube-worker1
-kubectl drain --ignore-daemonsets kube-worker1
-kubectl uncordon kube-worker1
-```
-
-## Terminating
-
-删除namespace后，出现namespace一直处于Terminating状态
-
-```sh
-#导出名称空间对象描述
-kubectl get namespace <ns> -o json > tmp.json
-#修改状态
-vi tmp.json
-#删除spec中的内容
-
-#开启另一个窗口
-kubectl proxy --port=8081
-
-#调用api更新namespace对象
-curl -k -H "Content-Type: application/json" -X PUT --data-binary @tmp.json http://127.0.0.1:8081/api/v1/namespaces/<ns>/finalize
-```
-
-### 获取kubeadm join 命令
-
-```sh
-#master
-kubeadm token create --config kubeadm.yaml --print-join-command
-
-```
-
-### networks have same bridge namer
-
-```sh
- ip link del docker0 && rm -rf /var/docker/network/* && mkdir -p /var/docker/network/files
- systemctl start docker
- # delete all containers
- docker rm -f $(docker ps -a -q)
-```
-
-### master node->work load
-
-```sh
-$ kubectl taint nodes --all dedicated-
-$ kubectl taint nodes kuben1 kube
-```
-
-### node ->  unschedulable
-
-```sh
-$ kubectl taint nodes kuben-master dedicated=master:NoSchedule
-```
-
-### reset
-
-```sh
-$ kubeadm reset
-$ rm /var/etcd/ -rf
-$ docker rm -f $(docker ps -a -q)
-```
-
-### 维护
 
 ```sh
 kubectl cordon kube-worker1

@@ -541,7 +541,7 @@ rwmixwrite=30            在混合读写的模式下，写占30%
 group_reporting          关于显示结果的，汇总每个进程的信息。
 
 ## dd
-dd if=/dev/zero of=/tmp/test1.img bs= count=1 oflag=dsync
+dd if=/dev/zero of=/tmp/test1.img bs=bm count=1 oflag=dsync
 ```
 
 
