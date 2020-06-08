@@ -1,4 +1,4 @@
-## 更换证书
+## 更换证书(1)
 
 整体步骤如下：
 
@@ -116,8 +116,8 @@ openssl req -new \
 	-config worker-openssl.cnf
 openssl x509 -req \
 	-in "kubelet-${WORKER_HOSTNAME}.csr" \
-	-CA ca.pem \
-	-CAkey ca-key.pem -CAcreateserial \
+	-CA ca.crt \
+	-CAkey ca.key -CAcreateserial \
 	-out "kubelet-${WORKER_HOSTNAME}.pem" \
 	-days 3650 \
 	-extensions v3_req \
@@ -125,6 +125,99 @@ openssl x509 -req \
 
 openssl x509  -noout -text -in "kubelet-${WORKER_HOSTNAME}.pem"
 ```
+
+## 更新证书(2)
+
+### master
+
+以下操作在master节点上执行
+
+```sh
+export K8S_CERT_DIR=/etc/kubernetes/pki
+export ETCD_CERT_DIR=/etc/kubernetes/pki/etcd
+export KUBELET_CERT_DIR=/var/lib/kubelet/pki
+
+## 校验证书是否过期
+for crt in ${K8S_CERT_DIR}/*.crt; do
+    expirationDate=$(openssl x509 -noout -text -in ${crt} | grep After | sed -e 's/^[[:space:]]*//')
+    echo "$(basename ${crt}) -- ${expirationDate}"
+done
+
+for crt in $(ls ${ETCD_CERT_DIR}/*.crt | grep -v 'key'); do
+    expirationDate=$(openssl x509 -noout -text -in ${crt} | grep After | sed -e 's/^[[:space:]]*//')
+    echo "$(basename ${crt}) -- ${expirationDate}"
+done
+
+echo "kubelet-client-current.pem -- $(openssl x509 -noout -text -in ${KUBELET_CERT_DIR}/kubelet-client-current.pem | grep After | sed -e 's/^[[:space:]]*//')"
+
+echo "kubelet.crt -- $(openssl x509 -noout -text -in ${KUBELET_CERT_DIR}/kubelet.crt | grep After | sed -e 's/^[[:space:]]*//')"
+
+# MASTER: api-server cert
+echo -n | openssl s_client -connect localhost:6443 2>&1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text -noout | grep Not
+
+# MASTER: controller-manager cert
+echo -n | openssl s_client -connect localhost:10257 2>&1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text -noout | grep Not
+
+# MASTER: scheduler cert
+echo -n | openssl s_client -connect localhost:10259 2>&1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text -noout | grep Not
+
+# MASTER: kubelet cert
+echo -n | openssl s_client -connect localhost:10250 2>&1 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text -noout | grep Not
+
+## 备份
+cd /etc/kubernetes
+
+cp admin.conf admin.conf.bkp
+cp controller-manager.conf controller-manager.conf.bkp
+cp scheduler.conf scheduler.conf.bkp
+cp kubelet.conf kubelet.conf.bkp
+
+## 重新生成证书
+kubeadm alpha certs renew apiserver
+kubeadm alpha certs renew apiserver-kubelet-client
+kubeadm alpha certs renew front-proxy-client
+# 查看生成的证书
+ls -al ./pki
+
+## 重新生成账户访问 api-server 的配置文件
+kubeadm alpha kubeconfig user --org system:masters --client-name kubernetes-admin  > /etc/kubernetes/admin.conf
+
+kubeadm alpha kubeconfig user --client-name system:kube-controller-manager > /etc/kubernetes/controller-manager.conf
+
+kubeadm alpha kubeconfig user --client-name system:kube-scheduler > /etc/kubernetes/scheduler.conf
+
+kubeadm alpha kubeconfig user --org system:nodes --client-name system:node:$(hostname) > /etc/kubernetes/kubelet.conf
+
+##Now that certificates and configuration files are in place, the control plane must be restarted. They typically run in containers, so the easiest way to trigger a restart, is to kill the processes running in there. Use (1) to verify, that the expiration dates indeed have been changed.
+kill -s SIGHUP $(pidof kube-apiserver)
+kill -s SIGHUP $(pidof kube-controller-manager)
+kill -s SIGHUP $(pidof kube-scheduler)
+
+## kubelet
+
+
+```
+
+### worker
+
+```sh
+### 在 WORKER 节点上执行
+export KUBELET_CERT_DIR=/var/lib/kubelet/pki
+
+## 校验证书是否过期
+echo "kubelet.crt -- $(openssl x509 -noout -text -in ${KUBELET_CERT_DIR}/kubelet.crt | grep After | sed -e 's/^[[:space:]]*//')"
+
+echo "kubelet-client-current.pem -- $(openssl x509 -noout -text -in ${KUBELET_CERT_DIR}/kubelet-client-current.pem | grep After | sed -e 's/^[[:space:]]*//')"
+
+### 在 MASTER 节点上执行
+## 重新生成证书
+export WORKER_HOSTNAME="<your_worker_hostname>"
+kubeadm alpha kubeconfig user --org system:nodes --client-name system:node:$WORKER_HOSTNAME > "/etc/kubernetes/kubelet-$WORKER_HOSTNAME.conf"
+```
+
+
+
+
 
 ## GC
 
@@ -162,10 +255,12 @@ for i in "${ALL_IMAGES[@]}"; do
 done
 ```
 
-## Evicted 
+## 清理pod
 
 ```sh
-kubectl get pods | grep Evicted | awk '{print $1}' | xargs kubectl delete pod
+kubectl get pods --all-namespaces | grep Evicted  | awk '{print "-n", $1, $2}' | xargs kubectl delete pod 
+
+kubectl get pods --all-namespaces | grep -v Running | awk '{print "-n", $1, $2}' | xargs kubectl delete pod 
 ```
 
 
