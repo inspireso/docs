@@ -261,6 +261,24 @@ done
 kubectl get pods --all-namespaces | grep Evicted  | awk '{print "-n", $1, $2}' | xargs kubectl delete pod 
 
 kubectl get pods --all-namespaces | grep -v Running | awk '{print "-n", $1, $2}' | xargs kubectl delete pod 
+
+kubectl get pods --all-namespaces | grep Terminating | awk '{print "-n", $1, $2}' | xargs kubectl delete --force --grace-period=0 pod 
+```
+
+
+
+## 查找容器
+
+```sh
+lsof -n |awk '{print $2}'|sort|uniq -c |sort -nr|more
+
+docker inspect -f '{{.State.Pid}}' ContainerID
+docker top ContainerID
+
+ps auxwwf > ps.txt
+<PID>
+
+docker inspect e5ee276363335d332e71639afa4876b8886ab9151e4e7e55d733bd7782bd15a8
 ```
 
 

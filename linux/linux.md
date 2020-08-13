@@ -39,6 +39,9 @@ cat /proc/sys/fs/file-nr
 # 查看某个进程pid打开的文件数
 ls /proc/pid/fd | wc -l
 
+lsof | wc -l 
+lsof -n |awk '{print $2}'|sort|uniq -c |sort -nr|more 
+
 #或者，需要安装yum install -y lsof
 lsof -p pid | wc -l 
 ```
@@ -856,6 +859,14 @@ restrict ntp.aliyun.com nomodify notrap nopeer noquery
 systemctl enable ntpd
 systemctl start ntpd
 
+```
+
+
+
+## TLS/SSL
+
+```sh
+sort -u /proc/crypto | grep module | grep aes
 ```
 
 

@@ -13,7 +13,7 @@ useradd -g openvpn -M -s /sbin/nologin openvpn
 
 mkdir /etc/openvpn/
 cp -R /usr/share/easy-rsa/ /etc/openvpn/
-cp /usr/share/doc/openvpn-2.4.7/sample/sample-config-files/server.conf /etc/openvpn/
+cp /usr/share/doc/openvpn-2.4.9/sample/sample-config-files/server.conf /etc/openvpn/
 cp -r /usr/share/doc/easy-rsa-3.0.3/vars.example /etc/openvpn/easy-rsa/3.0/vars
 
 ```

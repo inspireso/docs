@@ -117,9 +117,11 @@ mkdir -p /etc/docker
 cat <<EOF >  /etc/docker/daemon.json
 {
   "exec-opts": ["native.cgroupdriver=systemd"],
+  "data-root": "/data/docker/",
   "log-driver": "json-file",
   "log-opts": {
-    "max-size": "100m"
+    "max-size": "100m",
+    "max-file": "5"
   },
   "storage-driver": "overlay2",
   "storage-opts": [
