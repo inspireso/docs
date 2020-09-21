@@ -267,6 +267,15 @@ kubectl get pods --all-namespaces | grep Terminating | awk '{print "-n", $1, $2}
 
 
 
+## 查看springboot 进程的线程数
+
+```
+kubectl get pods  | grep Running | awk '{print "kubectl exec " $1 " -- curl http://localhost:8080/actuator/metrics/jvm.threads.peak"}' | xargs exec | jq ".measurements[] | .value"
+
+```
+
+
+
 ## 查找容器
 
 ```sh

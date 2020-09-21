@@ -39,12 +39,32 @@ cat /proc/sys/fs/file-nr
 # 查看某个进程pid打开的文件数
 ls /proc/pid/fd | wc -l
 
+# 查看统计信息
+ss -s
+cat /proc/net/sockstat | grep sockets | awk '{print $3}'
+cat /proc/net/sockstat
+
+ss -axp | awk '{print $9}' |awk '{split($0,a,",");print a[2]}' | awk '{split($0,a,"=");print a[2]}'|sort|uniq -c |sort|less
+
+#统计
 lsof | wc -l 
 lsof -n |awk '{print $2}'|sort|uniq -c |sort -nr|more 
 
 #或者，需要安装yum install -y lsof
 lsof -p pid | wc -l 
 ```
+
+### 查看容器打开的文件数
+
+```sh
+ps auxwwf > ps.txt
+
+#通过PID查找对应的容器ID
+
+docker ps | grep <容器ID前缀>
+```
+
+
 
 ### 查看打开的文件个数限制
 
