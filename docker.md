@@ -48,3 +48,11 @@ curl -L "https://github.com/docker/compose/releases/download/1.22.0/docker-compo
 sudo chmod +x /usr/local/bin/docker-compose
 ```
 
+## LazyDocker
+
+```
+docker run --rm -it -v /var/run/docker.sock:/var/run/docker.sock \
+-v ~/.config/lazydocker:/.config/jesseduffield/lazydocker \
+lazyteam/lazydocker
+```
+

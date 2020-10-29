@@ -91,7 +91,7 @@ yum install -y wrk
 
 yum groupinstall 'Development Tools'
 yum install -y openssl-devel git 
-git clone https://github.com/wg/wrk.git wrk
+git clone --depth=1 https://github.com/wg/wrk.git wrk
 cd wrk
 make
 # move the executable to somewhere in your PATH

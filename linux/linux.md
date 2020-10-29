@@ -578,7 +578,25 @@ tar -xzf tengine-2.2.0-centos7.tar.gz -C /
 tar -cjf 文件名.tar.bz2 *.jpg 
 #解压
 tar -xjf 文件名.tar.bz2 
+
 ```
+
+## 快速复制
+
+### 本机不同磁盘之间复制
+
+```sh
+#复制目录
+$ tar cvf – /home/src_dir | tar xvf – -C /data
+
+#复制文件
+$ tar cf – access.log |tar xf – -C /opt
+
+bg %1
+fg %1
+```
+
+
 
 ## RPM
 
