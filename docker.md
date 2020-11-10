@@ -11,7 +11,7 @@ sudo yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/cen
 sudo yum makecache fast
 sudo yum -y install docker-ce
 # Step 4: 开启Docker服务
-sudo systemctl start docker
+sudo systemctl enable docker && sudo systemctl start docker
 ```
 
 ## [配置](https://docs.gitlab.com/omnibus/)
@@ -23,7 +23,8 @@ cat <<EOF >  /etc/docker/daemon.json
   "exec-opts": ["native.cgroupdriver=systemd"],
   "log-driver": "json-file",
   "log-opts": {
-    "max-size": "100m"
+    "max-size": "100m",
+    "max-file": "5"
   },
   "storage-driver": "overlay2",
   "storage-opts": [
@@ -33,6 +34,13 @@ cat <<EOF >  /etc/docker/daemon.json
   "registry-mirrors": ["https://k4azpinc.mirror.aliyuncs.com"]
 }
 EOF
+
+cat <<EOF >>  /etc/sysctl.conf
+net.ipv6.conf.all.disable_ipv6=1
+net.ipv6.conf.default.disable_ipv6=1
+net.ipv6.conf.lo.disable_ipv6=1
+EOF
+sysctl -p
 ```
 
 ## 重启
