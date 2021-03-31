@@ -3,7 +3,7 @@
 ## install
 
 ```sh
-yum install epel-release
+yum install -y epel-release
 yum install -y openssl openssl-devel lzo lzo-devel pam pam-devel automake pkgconfig makecache
 yum install -y openvpn
 yum install -y easy-rsa
