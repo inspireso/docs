@@ -321,6 +321,14 @@ iperf -c 172.16.2.159 -u -b 200M -i2 -t 60
 
 
 
+## blkid
+
+```
+echo `blkid /dev/vdb | awk '{print $2}' | sed 's/\"//g'` /data ext4 defaults 0 0 >> /etc/fstab
+```
+
+
+
 ## ifstat
 
 ```sh
