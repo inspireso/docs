@@ -150,6 +150,8 @@ nmcli con reload && nmcli con up eno2
 - 配置teamd
 
 ```sh
+sudo apt install libteam-utils
+
 # 使用nmcli命令操作，创建team接口team0，同时设置teaming模式为roundrobin
 nmcli connection add type team con-name CNAME ifname INAME [config JSON]
 #CNAME 指代连接的名称，INAME 是接口名称，JSON (JavaScript Object Notation) 指定所使用的处理器(runner)。JSON 语法格式：'{"runner":{"name":"METHOD"}}'
@@ -174,6 +176,44 @@ nmcli con add type team-slave con-name team0-port3 ifname eno3 master team0
 # 查看team0的状态就出现了
 teamdctl team0 st 
 ```
+
+- 配置bond
+
+```sh
+modinfo bonding | head -n 3
+modprobe bonding
+  echo bonding > /etc/modules
+
+lsmod | grep bond
+sudo apt install ifenslave
+
+# 使用nmcli命令操作，创建team接口team0，同时设置teaming模式为roundrobin
+nmcli connection add type team con-name CNAME ifname INAME [config JSON]
+#CNAME 指代连接的名称，INAME 是接口名称，JSON (JavaScript Object Notation) 指定所使用的处理器(runner)。JSON 语法格式：'{"runner":{"name":"METHOD"}}'
+#METHOD 是以下的其中一个：broadcast、activebackup、roundrobin、loadbalance 或者 lacp。
+#Mode=0(balance-rr) 表示负载分担round-robin，和交换机的聚合强制不协商的方式配合。
+#Mode=1(active-backup) 表示主备模式，只有一块网卡是active,另外一块是备的standby，这时如果交换机配的是捆绑，将不能正常工作，因为交换机往两块网卡发包，有一半包是丢弃的。
+#Mode=2(balance-xor) 表示XOR Hash负载分担，和交换机的聚合强制不协商方式配合。（需要xmit_hash_policy）
+#Mode=3(broadcast) 表示所有包从所有interface发出，这个不均衡，只有冗余机制...和交换机的聚合强制不协商方式配合。
+#Mode=4(802.3ad) 表示支持802.3ad协议，和交换机的聚合LACP方式配合（需要xmit_hash_policy）
+#Mode=5(balance-tlb) 是根据每个slave的负载情况选择slave进行发送，接收时使用当前轮到的slave
+#Mode=6(balance-alb) 在5的tlb基础上增加了rlb。）
+
+#例子
+nmcli con add type bond con-name bond0 ifname bond0 mode balance-rr
+#给接口 bond0 设置ip地址
+nmcli con mod bond0 ipv4.address '192.168.8.159/24' ipv4.gateway '192.168.8.254'
+#设置为手动模式
+nmcli con mod bond0 ipv4.method manual
+#将两张物理网卡加入到 bond0 中
+nmcli con add type bond-slave con-name bond0-port1 ifname eno1 master bond0
+nmcli con add type bond-slave con-name bond0-port2 ifname eno2 master bond0
+nmcli con add type bond-slave con-name bond0-port3 ifname eno3 master bond0
+# nmcli con up bond0
+# 查看team0的状态就出现了
+```
+
+  
 
 ### ip
 
@@ -561,7 +601,7 @@ rw=randwrite             测试随机写的I/O
 rw=randrw                测试随机写和读的I/O 
 bs=16k                   单次io的块文件大小为16k 
 bsrange=512-2048         同上，提定数据块的大小范围 
-size=5g    本次的测试文件大小为5g，以每次4k的io进行测试。 
+size=5g                  本次的测试文件大小为5g，以每次4k的io进行测试。 
 numjobs=30               本次的测试线程为30. 
 runtime=1000             测试时间为1000秒，如果不写则一直将5g文件分4k每次写完为止。 
 ioengine=psync           io引擎使用pync方式 
@@ -602,6 +642,15 @@ $ tar cf – access.log |tar xf – -C /opt
 
 bg %1
 fg %1
+
+
+```
+
+ ### rsync
+
+```sh
+rsync -auvzP -e "ssh -p22" --remove-source-files  chia@chia-003:/data/farm/*/*.plot /data/farm/sdc/
+
 ```
 
 

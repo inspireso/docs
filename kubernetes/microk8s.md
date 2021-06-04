@@ -81,6 +81,7 @@ microk8s join 172.16.0.10:25000/147bd47cd7332f03a5586e65b5f8aeee
 ```
 
 
+
 ## master
 
 ```sh
@@ -113,3 +114,6 @@ sudo apt install snapd
 sudo systemctl enable snapd
 
 ```
+
+
+
