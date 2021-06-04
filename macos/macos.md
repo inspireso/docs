@@ -104,3 +104,17 @@ cman ls
 
 
 
+## diskutil
+
+```sh
+cd Downloads/
+hdiutil convert -format UDRW -o ubuntu-20.04.iso  ubuntu-20.04.2.0-desktop-amd64.iso
+
+diskutil list
+diskutil unmountDisk /dev/disk2
+
+mv ubuntu.iso.dmg ubuntu.iso
+sudo dd if=./ubuntu.iso of=/dev/disk2 bs=1m
+
+```
+
