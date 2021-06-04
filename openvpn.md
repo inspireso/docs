@@ -107,10 +107,12 @@ vi /etc/sysconfig/iptables, 添加如下规则
 ```sh
 cat <<EOF >> /etc/rc.d/rc.local
 iptables -A INPUT -p udp -m state --state NEW -m udp --dport 8443 -j ACCEPT
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24  -j MASQUERADE
 EOF
 chmod +x /etc/rc.d/rc.local
 systemctl enable rc-local.service && systemctl start rc-local.service
+
+iptables -nL -t nat
 ```
 
 ### 开启转发功能
@@ -118,6 +120,8 @@ systemctl enable rc-local.service && systemctl start rc-local.service
 ```sh
 echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
 sysctl -p
+
+sysctl -a | grep net.ipv4.conf.eth0.forwarding 
 ```
 
 ### 分配用户
@@ -168,6 +172,26 @@ keepalive 10 120
 
 
 ## FAQ
+
+### 转发失败
+
+```sh
+iptables -nL -t filter
+iptables -nL -t mangle
+iptables -nL -t nat
+
+# 检查所有网卡的forwarding=1
+sysctl -a | grep net.ipv4.conf.eth0.forwarding 
+
+# 跟踪 iptables
+modprobe ipt_LOG ip6t_LOG nfnetlink_log
+iptables -t raw -A PREROUTING -p icmp -s 10.8.0.0/24 -j TRACE
+
+dmesg -C
+dmesg -Lew
+```
+
+
 
 ### 生成客户端证书错误
 
