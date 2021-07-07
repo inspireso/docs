@@ -52,6 +52,7 @@ lsof -n |awk '{print $2}'|sort|uniq -c |sort -nr|more
 
 #或者，需要安装yum install -y lsof
 lsof -p pid | wc -l 
+
 ```
 
 ### 查看容器打开的文件数
@@ -81,11 +82,22 @@ root soft nofile 65535
 root hard nofile 65535
 * soft nofile 65535
 * hard nofile 65535
+
+ulimit -n 65535
+
+#设置运行中的进程
+prlimit  -p pid --nofile=65535
+
+#systemd管理的进程
+/etc/systemd/system/xxx.service.d/override.conf
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
 ```
 
 ### nmcli：管理工具
 
-- 查看nmcli使用说明
+#### 查看nmcli使用说明
 
 ```sh
 [root@rehl7 ~]# nmcli help
@@ -112,7 +124,7 @@ OBJECT
   a[gent]         网络代理管理
 ```
 
-- 常用命令
+#### 常用命令
 
 ```sh
 # 查看基本的网络开启状况
@@ -147,7 +159,7 @@ nmcli con mod eno2 +ipv4.address '192.168.8.159/24'
 nmcli con reload && nmcli con up eno2
 ```
 
-- 配置teamd
+#### 配置teamd
 
 ```sh
 sudo apt install libteam-utils
@@ -172,6 +184,8 @@ nmcli con mod team0 ipv4.method manual
 nmcli con add type team-slave ifname eno1 master team0
 nmcli con add type team-slave con-name team0-port2 ifname eno2 master team0
 nmcli con add type team-slave con-name team0-port3 ifname eno3 master team0
+nmcli con show
+nmcli con reload && sudo nmcli con up team0
 # nmcli con up team0
 # 查看team0的状态就出现了
 teamdctl team0 st 
@@ -610,6 +624,11 @@ group_reporting          关于显示结果的，汇总每个进程的信息。
 
 ## dd
 dd if=/dev/zero of=/tmp/test1.img bs=bm count=1 oflag=dsync
+
+## 显示进度
+sudo dd if=/dev/sda bs=2048 count=44898303 conv=sync,noerror | pv -s 21G |sudo dd of=/dev/sdb
+sudo dd if=/dev/nvme0n1 bs=10M  conv=sync,noerror | pv -s 120G |sudo dd of=/dev/nvme3n1
+sudo pv -tpreb /dev/nvme0n1 | dd of=/dev/zero bs=10M conv=notrunc,noerror
 ```
 
 
@@ -629,6 +648,8 @@ tar -xjf 文件名.tar.bz2
 
 ```
 
+
+
 ## 快速复制
 
 ### 本机不同磁盘之间复制
@@ -637,20 +658,23 @@ tar -xjf 文件名.tar.bz2
 #复制目录
 $ tar cvf – /home/src_dir | tar xvf – -C /data
 
+SRC="/data"; TRG="/data1"; tar cf - "$SRC" | pv -s $(du -sb "$SRC" | cut -f1) | tar xf - -C "$TRG"
+
+time tar -c go |pv |lz4 -B4 |ssh -p22 -c aes128-ctr 192.168.176.11 "lz4 -d |tar -xC /data/"
+
 #复制文件
-$ tar cf – access.log |tar xf – -C /opt
+$ tar cf - access.log |tar xf - -C /opt
+$ tar cf - access.log | pv |tar xf - -C /opt
 
 bg %1
 fg %1
-
 
 ```
 
  ### rsync
 
 ```sh
-rsync -auvzP -e "ssh -p22" --remove-source-files  chia@chia-003:/data/farm/*/*.plot /data/farm/sdc/
-
+rsync -auvzP --remove-source-files  chia@chia-003:/data/farm/*/*.plot /data/farm/sdc/
 ```
 
 
