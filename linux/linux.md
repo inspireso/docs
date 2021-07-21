@@ -223,8 +223,7 @@ nmcli con mod bond0 ipv4.method manual
 nmcli con add type bond-slave con-name bond0-port1 ifname eno1 master bond0
 nmcli con add type bond-slave con-name bond0-port2 ifname eno2 master bond0
 nmcli con add type bond-slave con-name bond0-port3 ifname eno3 master bond0
-# nmcli con up bond0
-# 查看team0的状态就出现了
+nmcli con reload && nmcli con up bond0
 ```
 
   
