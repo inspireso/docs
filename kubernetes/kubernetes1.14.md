@@ -1,7 +1,6 @@
 # kubernetes1.14集群部署
 
 
-
 ## 环境
 
 os: CentOS Linux release 7.4.1708 (Core)

@@ -1,4 +1,6 @@
-## init-get-node
+# geth
+
+## install
 
 
 
@@ -6,9 +8,7 @@
 #!/bin/sh
 
 echo “磁盘基准测试”
-sudo yum install libaio -y
-sudo yum install libaio-devel -y
-sudo yum install fio -y
+sudo yum -y install libaio libaio-devel fio
 
 echo "初始化数据盘"
 mkfs.ext4 /dev/vdb
@@ -25,9 +25,9 @@ cd /data/eth
 
 
 echo "下载安装 geth"
-wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.3-991384a7.tar.gz
-tar -xzvf geth-linux-amd64-1.10.3-991384a7.tar.gz
-ln -s /data/eth/geth-linux-amd64-1.10.3-991384a7 /data/eth/geth
+wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.5-33ca98ec.tar.gz
+tar -xzvf geth-linux-amd64-1.10.5-33ca98ec.tar.gz
+ln -s geth-linux-amd64-1.10.5-33ca98ec /data/eth/geth
 ls -la
 
 echo "安装服务 geth.service"
@@ -89,17 +89,7 @@ chmod +x /data/eth/console.sh
 
 
 
-## restore nodekey
-
-```sh
-scp root@172.17.64.14:/data/eth/gethdata/geth/nodekey /data/eth/gethdata/geth/nodekey
-scp root@172.17.64.14:/data/eth/gethdata/geth/static-nodes.json /data/eth/gethdata/geth/static-nodes.json
-```
-
-
-
 ## FAQ
-
 
 
 ### 导出 peers
@@ -115,7 +105,6 @@ scp root@172.17.64.14:/data/eth/gethdata/geth/static-nodes.json /data/eth/gethda
 ```
 
 
-
 ### 升级版本
 
 ```sh
@@ -125,9 +114,9 @@ cat <<"EOF" > /etc/systemd/system/geth.service.d/limit.conf
 LimitNOFILE=65535
 EOF
 
-cd /data/eth && wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.3-991384a7.tar.gz
-tar -xzvf geth-linux-amd64-1.10.4-aa637fd3.tar.gz
-rm -f /data/eth/geth && ln -s /data/eth/geth-linux-amd64-1.10.4-aa637fd3 /data/eth/geth
+cd /data/eth && wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.5-33ca98ec.tar.gz
+tar -xzvf geth-linux-amd64-1.10.5-33ca98ec.tar.gz
+rm -f /data/eth/geth && ln -s /data/eth/geth-linux-amd64-1.10.5-33ca98ec /data/eth/geth
 
 systemctl daemon-reload && systemctl restart geth && systemctl status geth
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec  "admin.nodeInfo"
