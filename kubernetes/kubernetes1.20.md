@@ -66,22 +66,21 @@ systemctl status rc-local.service
 
 #内核参数设置
 setenforce 0
-cat <<EOF >>  /etc/security/limits.conf
+cat <<EOF >  /etc/security/limits.d/nofile.conf
 root soft nofile 65535
 root hard nofile 65535
 * soft nofile 65535
 * hard nofile 65535
 EOF
 
-
-cat <<EOF >>  /etc/sysctl.conf
+cat <<EOF >  /etc/sysctl.d/99-net.conf
 net.ipv6.conf.all.disable_ipv6=1
 net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
 
 vm.swappiness=0
-net.ipv4.neigh.default.gc_stale_time=120
 EOF
+
 
 cat <<EOF >  /etc/sysctl.d/99-k8s.conf
 kernel.softlockup_all_cpu_backtrace=1
@@ -110,6 +109,7 @@ sudo sysctl --system
 
 #加载相关模块
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
 br_netfilter
 EOF
 sudo modprobe overlay
@@ -134,7 +134,7 @@ systemctl enable containerd && systemctl restart containerd
 
 #配置docker日志自动归档
 cat <<EOF >  /etc/logrotate.d/containerd
-/var/log/pods/*/*.log
+/var/log/pods/*/*/*.log
 {
     size    50M
     rotate  0
@@ -160,8 +160,7 @@ cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
 deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main
 EOF
 
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-get update && apt-get install -y kubelet kubeadm kubectl
 
 sudo swapoff -a
 
@@ -181,7 +180,7 @@ bootstrapTokens:
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
-kubernetesVersion: 1.21.0
+kubernetesVersion: 1.21.3
 imageRepository: "registry.aliyuncs.com/google_containers"
 clusterName: kubernetes
 controllerManager: {}
@@ -198,10 +197,13 @@ networking:
 EOF
 
 ctr -n k8s.io image pull registry.aliyuncs.com/google_containers/coredns:1.8.0
-ctr -n k8s.io image tag registry.aliyuncs.com/google_containers/coredns:1.8.0 registry.aliyuncs.com/google_containers/coredns/coredns:v1.8.0
+ctr -n k8s.io image tag registry.aliyuncs.com/google_containers/coredns:1.8.0 registry.aliyuncs.com/google_containers/coredns:v1.8.0
 ctr -n k8s.io image ls
 
 kubeadm init --config kubeadm.yaml --ignore-preflight-errors=ImagePull
+
+echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> ~/.profile
+source ~/.profile
 
 #生产环境: 使用flannel
 curl -o kube-flannel.yml https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
@@ -225,6 +227,8 @@ curl -o kube-flannel.yml https://raw.githubusercontent.com/coreos/flannel/master
     }
 
 kubectl apply -f kube-flannel.yml
+
+
 ```
 
 
@@ -236,7 +240,7 @@ kubectl apply -f kube-flannel.yml
 kubeadm token create --config kubeadm.yaml --print-join-command
 
 #node
-docker pull quay.io/coreos/flannel:v0.14.0
+ctr -n k8s.io image pull quay.io/coreos/flannel:v0.14.0
 
 kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
 
