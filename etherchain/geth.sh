@@ -2,7 +2,6 @@
 
 set -e
 
-
 ## 使用方法
 ## install: sh geth.sh install
 ## upgrade: sh geth.sh upgrade
@@ -26,8 +25,8 @@ ls -la
 
 
 if  [ "$1" == "install" ];  then
-    echo "安装服务 geth.service"
-    cat <<-EOF > /etc/systemd/system/geth.service
+  echo "安装服务 geth.service"
+  cat <<-EOF > /etc/systemd/system/geth.service
 [Unit]
 Description=Geth
 After=network.target
@@ -52,11 +51,19 @@ ExecStart=/data/eth/geth/geth $GETH_API_OPTS $GETH_NETWORK_OPTS $GETH_MINE_OPTS 
 WantedBy=default.target
 EOF
 
-    mkdir -p /etc/systemd/system/geth.service.d
-    cat <<EOF > /etc/systemd/system/geth.service.d/limit.conf
+  mkdir -p /etc/systemd/system/geth.service.d
+  cat <<EOF > /etc/systemd/system/geth.service.d/limit.conf
 [Service]
 LimitNOFILE=65535
 EOF
+
+  echo "生成控制台脚本"
+  cat <<"EOF" > /data/eth/console.sh
+#!/bin/sh
+
+/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc
+EOF
+  chmod +x /data/eth/console.sh
     
 fi
 

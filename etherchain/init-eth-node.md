@@ -20,52 +20,11 @@ cat /etc/fstab
 mount -a
 df -hl
 
-mkdir -p /data/eth
 cd /data/eth
+wget https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh
+chmod +x geth.sh
 
-
-echo "下载安装 geth"
-wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.7-12f0ff40.tar.gz
-tar -xzvf geth-linux-amd64-1.10.7-12f0ff40.tar.gz
-ln -s geth-linux-amd64-1.10.7-12f0ff40 /data/eth/geth
-ls -la
-
-echo "安装服务 geth.service"
-cat <<"EOF" > /etc/systemd/system/geth.service
-[Unit]
-Description=Geth
-After=network.target
-
-[Service]
-LimitNOFILE=65535
-Environment="DATA_DIR=/data/eth/gethdata"
-Environment="DAG_DIR=/data/eth/gethdata/dag"
-Environment="GETH_API_OPTS=--http --http.addr 0.0.0.0"
-#Environment="GETH_MINE_OPTS=--mine --miner.etherbase 0x65A07d3081a9A6eE9BE122742c84ffea6964aCd2"
-Environment="GETH_ETHASH_OPTS=--ethash.dagdir /data/eth/gethdata/dag"
-Environment="GETH_EXTRA_OPTS=--datadir /data/eth/gethdata --maxpeers 1000 --cache 4096 --syncmode fast"
-Environment="GETH_METRICS_OPTS=--metrics --metrics.addr 0.0.0.0 --metrics.port 6060"
-
-Type=simple
-User=root
-Restart=always
-RestartSec=12
-ExecStart=/data/eth/geth/geth $GETH_API_OPTS $GETH_NETWORK_OPTS $GETH_MINE_OPTS $GETH_ETHASH_OPTS $GETH_METRICS_OPTS $GETH_EXTRA_OPTS
-
-[Install]
-WantedBy=default.target
-EOF
-
-mkdir -p /etc/systemd/system/geth.service.d
-cat <<"EOF" > /etc/systemd/system/geth.service.d/limit.conf
-[Service]
-LimitNOFILE=65535
-EOF
-
-echo "启动 geth"
-systemctl enable geth
-systemctl daemon-reload && systemctl restart geth
-systemctl status geth
+./geth.sh install
 
 echo "添加太极网节点"
 cat <<"EOF" > /data/eth/gethdata/geth/static-nodes.json
@@ -78,13 +37,6 @@ cat <<"EOF" > /data/eth/gethdata/geth/static-nodes.json
 EOF
 systemctl daemon-reload && systemctl restart geth
 
-echo "生成控制台脚本"
-cat <<"EOF" > /data/eth/console.sh
-#!/bin/sh
-
-/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc
-EOF
-chmod +x /data/eth/console.sh
 ```
 
 
@@ -108,17 +60,12 @@ chmod +x /data/eth/console.sh
 ### 升级版本
 
 ```sh
-mkdir -p /etc/systemd/system/geth.service.d
-cat <<"EOF" > /etc/systemd/system/geth.service.d/limit.conf
-[Service]
-LimitNOFILE=65535
-EOF
+cd /data/eth
+wget https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh
+chmod +x geth.sh
 
-cd /data/eth && wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.7-12f0ff40.tar.gz
-tar -xzvf geth-linux-amd64-1.10.7-12f0ff40.tar.gz
-rm -f /data/eth/geth && ln -s /data/eth/geth-linux-amd64-1.10.7-12f0ff40 /data/eth/geth
+./geth.sh upgrade
 
-systemctl daemon-reload && systemctl restart geth && systemctl status geth
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec  "admin.nodeInfo"
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "eth.syncing"
 
