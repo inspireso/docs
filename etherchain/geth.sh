@@ -26,7 +26,7 @@ ls -la
 
 if  [ "$1" == "install" ];  then
   echo "安装服务 geth.service"
-  cat <<-EOF > /etc/systemd/system/geth.service
+  cat <<"EOF" > /etc/systemd/system/geth.service
 [Unit]
 Description=Geth
 After=network.target
@@ -52,7 +52,7 @@ WantedBy=default.target
 EOF
 
   mkdir -p /etc/systemd/system/geth.service.d
-  cat <<EOF > /etc/systemd/system/geth.service.d/limit.conf
+  cat <<"EOF" > /etc/systemd/system/geth.service.d/limit.conf
 [Service]
 LimitNOFILE=65535
 EOF
