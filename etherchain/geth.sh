@@ -11,22 +11,21 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-
 # 指定 geth 版本
 GETH_VERSION=${GETH_VERSION:-geth-linux-amd64-1.10.7-12f0ff40}
-
 
 mkdir -p /data/eth
 cd /data/eth
 
 
-echo "下载安装 geth"
+echo "下载 geth"
 wget "https://gethstore.blob.core.windows.net/builds/${GETH_VERSION}.tar.gz"
 tar -xzvf "${GETH_VERSION}.tar.gz"
-rm -f /data/eth/geth && ln -s /data/eth/${GETH_VERSION} /data/eth/geth
+rm -vf /data/eth/geth && ln -s /data/eth/${GETH_VERSION} /data/eth/geth
 ls -la
 
-if  ["$1" == "install"];  then
+
+if  [ "$1" == "install" ];  then
     echo "安装服务 geth.service"
     cat <<-EOF > /etc/systemd/system/geth.service
 [Unit]
@@ -61,7 +60,7 @@ EOF
     
 fi
 
-echo "启动 geth"
+echo "重启动 geth"
 systemctl enable geth
 systemctl daemon-reload && systemctl restart geth
 systemctl status geth
