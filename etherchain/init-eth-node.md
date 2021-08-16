@@ -25,9 +25,9 @@ cd /data/eth
 
 
 echo "下载安装 geth"
-wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.5-33ca98ec.tar.gz
-tar -xzvf geth-linux-amd64-1.10.5-33ca98ec.tar.gz
-ln -s geth-linux-amd64-1.10.5-33ca98ec /data/eth/geth
+wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.7-12f0ff40.tar.gz
+tar -xzvf geth-linux-amd64-1.10.7-12f0ff40.tar.gz
+ln -s geth-linux-amd64-1.10.7-12f0ff40 /data/eth/geth
 ls -la
 
 echo "安装服务 geth.service"
@@ -114,9 +114,9 @@ cat <<"EOF" > /etc/systemd/system/geth.service.d/limit.conf
 LimitNOFILE=65535
 EOF
 
-cd /data/eth && wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.5-33ca98ec.tar.gz
-tar -xzvf geth-linux-amd64-1.10.5-33ca98ec.tar.gz
-rm -f /data/eth/geth && ln -s /data/eth/geth-linux-amd64-1.10.5-33ca98ec /data/eth/geth
+cd /data/eth && wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.7-12f0ff40.tar.gz
+tar -xzvf geth-linux-amd64-1.10.7-12f0ff40.tar.gz
+rm -f /data/eth/geth && ln -s /data/eth/geth-linux-amd64-1.10.7-12f0ff40 /data/eth/geth
 
 systemctl daemon-reload && systemctl restart geth && systemctl status geth
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec  "admin.nodeInfo"
