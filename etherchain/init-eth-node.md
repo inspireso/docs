@@ -21,7 +21,7 @@ df -hl
 
 ```sh
 
-curl -s https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh | bash -s install
+curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh | bash -s install
 ```
 
 
@@ -61,7 +61,7 @@ systemctl daemon-reload && systemctl restart geth
 ### 升级版本
 
 ```sh
-curl -s https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh | bash -s upgrade
+curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh | bash -s upgrade
 
 
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec  "admin.nodeInfo"
