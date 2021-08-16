@@ -18,8 +18,7 @@ cd /data/eth
 
 
 echo "下载 geth"
-wget "https://gethstore.blob.core.windows.net/builds/${GETH_VERSION}.tar.gz"
-tar -xzvf "${GETH_VERSION}.tar.gz"
+curl -sSL "https://gethstore.blob.core.windows.net/builds/${GETH_VERSION}.tar.gz" | tar -xz
 rm -vf /data/eth/geth && ln -s /data/eth/${GETH_VERSION} /data/eth/geth
 ls -la
 
