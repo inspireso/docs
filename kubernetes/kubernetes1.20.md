@@ -160,7 +160,7 @@ cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
 deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main
 EOF
 
-sudo apt-get update && apt-get install -y kubelet kubeadm kubectl
+sudo apt-get update && apt-get install -y kubelet=1.21.3-00 kubeadm=1.21.3-00 kubectl=1.21.3-00
 
 sudo swapoff -a
 
@@ -234,6 +234,23 @@ kubectl apply -f kube-flannel.yml
 
 
 ## node
+
+```
+#master
+kubeadm token create --config kubeadm.yaml --print-join-command
+
+#node
+ctr -n k8s.io image pull quay.io/coreos/flannel:v0.14.0
+
+kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
+
+echo 'export KUBECONFIG=/etc/kubernetes/kubelet.conf' >> ~/.profile
+source ~/.profile
+```
+
+
+
+## gpu-node
 
 ```
 #master

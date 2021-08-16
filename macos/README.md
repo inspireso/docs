@@ -118,3 +118,15 @@ sudo dd if=./ubuntu.iso of=/dev/disk2 bs=1m
 
 ```
 
+## NTFS
+
+```
+sudo diskutil list
+sudo diskutil unmountDisk /dev/disk2
+sudo mkdir  /Volumes/mnt
+sudo mount_ntfs -o rw,nobrowse /dev/disk2s1 /Volumes/mnt/
+....
+
+sudo umount /Volumes/mnt/
+```
+
