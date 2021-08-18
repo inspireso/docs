@@ -54,7 +54,9 @@ systemctl daemon-reload && systemctl restart geth
 ## 添加 peer
 
 ```sh
-/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "admin.peers"
+/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "admin.addPeer('enode')"
+/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "admin.addTrustedPeer('enode')"
+
 ```
 
 
