@@ -37,7 +37,7 @@ Environment="DAG_DIR=/data/eth/gethdata/dag"
 Environment="GETH_API_OPTS=--http --http.addr 0.0.0.0"
 #Environment="GETH_MINE_OPTS=--mine --miner.etherbase 0x65A07d3081a9A6eE9BE122742c84ffea6964aCd2"
 Environment="GETH_ETHASH_OPTS=--ethash.dagdir /data/eth/gethdata/dag"
-Environment="GETH_EXTRA_OPTS=--datadir /data/eth/gethdata --maxpeers 1000 --cache 4096 --syncmode fast"
+Environment="GETH_EXTRA_OPTS=--datadir /data/eth/gethdata --maxpeers 1000 --cache 4096 --syncmode snap"
 Environment="GETH_METRICS_OPTS=--metrics --metrics.addr 0.0.0.0 --metrics.port 6060"
 
 Type=simple
