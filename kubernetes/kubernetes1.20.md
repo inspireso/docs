@@ -56,6 +56,7 @@ ExecStart=/etc/rc.local start
 TimeoutSec=0
 RemainAfterExit=yes
 GuessMainPID=no
+
 [Install]
 WantedBy=multi-user.target
 Alias=rc-local.service
@@ -125,8 +126,7 @@ EOF
 
 sudo apt -y update && sudo apt -y install containerd.io
 
-sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml
+sudo mkdir -p /etc/containerd && containerd config default | sudo tee /etc/containerd/config.toml
 sed -i 's|k8s.gcr.io|registry.aliyuncs.com/google_containers|' /etc/containerd/config.toml
 sed -i 's|"https://registry-1.docker.io"|"https://registry.cn-beijing.aliyuncs.com","https://registry.docker-cn.com","https://registry-1.docker.io"|' /etc/containerd/config.toml
 
@@ -238,6 +238,9 @@ kubectl apply -f kube-flannel.yml
 kubeadm token create --config kubeadm.yaml --print-join-command
 
 #node
+ctr -n k8s.io image pull registry.cn-hangzhou.aliyuncs.com/kube_containers/flannel:v0.14.0
+ctr -n k8s.io image tag registry.cn-hangzhou.aliyuncs.com/kube_containers/flannel:v0.14.0 quay.io/coreos/flannel:v0.14.0
+
 ctr -n k8s.io image pull quay.io/coreos/flannel:v0.14.0
 
 kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
@@ -251,16 +254,69 @@ source ~/.profile
 ## gpu-node
 
 ```
-#master
-kubeadm token create --config kubeadm.yaml --print-join-command
+#安装驱动
+ubuntu-drivers devices
+ubuntu-drivers autoinstall
 
-#node
-ctr -n k8s.io image pull quay.io/coreos/flannel:v0.14.0
+#containerd.io
+vi /etc/containerd/config.toml
+在[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]后面插入一下内容
 
-kubeadm join --token=xxxxxxxxxxxxx xxx.xxx.xxx.xxx
+            SystemdCgroup = true
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+            privileged_without_host_devices = false
+            runtime_engine = ""
+            runtime_root = ""
+            runtime_type = "io.containerd.runc.v1"
+            [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+              BinaryName = "/usr/bin/nvidia-container-runtime"
+              SystemdCgroup = true
 
-echo 'export KUBECONFIG=/etc/kubernetes/kubelet.conf' >> ~/.profile
-source ~/.profile
+
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+    && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+    && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+sudo apt-get update \
+    && sudo apt-get install -y nvidia-container-runtime
+
+sudo systemctl restart containerd
+    
+sudo ctr image pull docker.io/nvidia/cuda:11.0-base
+sudo ctr run --rm -t --gpus 0 docker.io/nvidia/cuda:11.0-base cuda-11.0-base nvidia-smi
+
+# docker-ce
+apt remove -y containerd.io
+apt install -y docker-ce
+
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+apt update && apt install -y nvidia-docker2
+
+cat <<"EOF" > /etc/docker/daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "5"
+  },
+  "registry-mirrors": ["https://2e854usg.mirror.aliyuncs.com"],
+  "bip": "10.16.0.1/16",
+  "default-runtime": "nvidia",
+  "runtimes": {
+     "nvidia": {
+        "path": "nvidia-container-runtime",
+        "runtimeArgs": []
+      }
+    }
+}
+EOF
+
+sudo systemctl restart docker
+
+sudo docker run --rm -it --gpus all nvidia/cuda:11.0-base nvidia-smi
 ```
 
 
