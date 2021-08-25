@@ -121,7 +121,7 @@ nvidia-smi -q -d SUPPORTED_CLOCKS
 nvidia-smi -q
 
 
-sudo nvidia-xconfig -a --cool-bits=28 --allow-empty-initial-configuration
+sudo nvidia-xconfig -a --cool-bits=28
 
 export DISPLAY=:0
 

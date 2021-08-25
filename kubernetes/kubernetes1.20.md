@@ -106,7 +106,7 @@ net.ipv4.tcp_max_syn_backlog=8096
 net.ipv4.tcp_rmem=4096 12582912 16777216
 net.bridge.bridge-nf-call-iptables=1
 EOF
-sudo sysctl --system
+sysctl --system
 
 #加载相关模块
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -124,7 +124,7 @@ cat <<EOF >/etc/apt/sources.list.d/docker.list
 deb [arch=amd64] http://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable
 EOF
 
-sudo apt -y update && sudo apt -y install containerd.io
+apt -y update && sudo apt -y install containerd.io
 
 sudo mkdir -p /etc/containerd && containerd config default | sudo tee /etc/containerd/config.toml
 sed -i 's|k8s.gcr.io|registry.aliyuncs.com/google_containers|' /etc/containerd/config.toml

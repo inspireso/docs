@@ -4,14 +4,14 @@
 # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
 
 ## 使用方法
-## export KUBE_VERSION=1.20.3
+## export KUBE_VERSION=1.21.3
 ## master:sh install-ubuntu.sh master
 ## worker: sh install-ubuntu.sh
 ## nvidia: sh install-ubuntu.sh nvidia
 
 
 # 指定kubernetes版本
-KUBENETES_VERSION=$(KUBE_VERSION:-1.20.3)
+KUBENETES_VERSION=$(KUBE_VERSION:-1.21.3)
 MASTER=$(echo $@ | grep "master")
 NVIDIA=$(echo $@ | grep "nvidia")
 
@@ -22,6 +22,39 @@ NVIDIA=$(echo $@ | grep "nvidia")
 swapoff -a
 yes | cp /etc/fstab /etc/fstab_bak
 cat /etc/fstab_bak |grep -v swap > /etc/fstab
+
+cat <<"EOF" > /lib/systemd/system/rc-local.service
+#  SPDX-License-Identifier: LGPL-2.1+
+#
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+# This unit gets pulled automatically into multi-user.target by
+# systemd-rc-local-generator if /etc/rc.local is executable.
+[Unit]
+Description=/etc/rc.local Compatibility
+Documentation=man:systemd-rc-local-generator(8)
+ConditionFileIsExecutable=/etc/rc.local
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/etc/rc.local start
+TimeoutSec=0
+RemainAfterExit=yes
+GuessMainPID=no
+
+[Install]
+WantedBy=multi-user.target
+Alias=rc-local.service
+EOF
+systemctl enable rc-local.service
+systemctl daemon-reload && systemctl restart rc-local.service
+systemctl status rc-local.service
 
 #内核参数设置
 setenforce 0
@@ -149,9 +182,11 @@ networking:
   serviceSubnet: ${SERVICE_SUBNET:-10.1.0.0/16}
 EOF
 
+ctr -n k8s.io image pull registry.aliyuncs.com/google_containers/coredns:1.8.0
+ctr -n k8s.io image tag registry.aliyuncs.com/google_containers/coredns:1.8.0 registry.aliyuncs.com/google_containers/coredns:v1.8.0
+
 if  test "$MASTER"; then
-  ctr -n k8s.io image pull registry.aliyuncs.com/google_containers/coredns:1.8.0
-  ctr -n k8s.io image tag registry.aliyuncs.com/google_containers/coredns:1.8.0 registry.aliyuncs.com/google_containers/coredns:v1.8.0
+  
   kubeadm init --config kubeadm.yaml --ignore-preflight-errors=ImagePull
 
   echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> ~/.profile
@@ -160,6 +195,21 @@ if  test "$MASTER"; then
   curl -o kube-flannel.yml https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
   sed -i 's|"Type": "vxlan"|"Type": "vxlan","Directrouting": true|g' kube-flannel.yml
   kubectl apply -f kube-flannel.yml
+
+  #生成 join 脚本
+  cat <<"EOF" > ./k8s-join.sh
+#!/bin/bash
+
+EOF
+  kubeadm token create --config kubeadm.yaml --print-join-command >> ./k8s-join.sh
+
+  cat <<"EOF" >> ./k8s-join.sh
+echo 'export KUBECONFIG=/etc/kubernetes/kubelet.conf' >> ~/.profile
+source ~/.profile
+
+EOF
+
+
 fi
 
 if  test "$NVIDIA"; then
@@ -194,5 +244,8 @@ if  test "$NVIDIA"; then
 }
 EOF
   systemctl restart docker
-  docker run --rm -it --gpus all nvidia/cuda:11.0-base nvidia-smi
+  docker pull registry.cn-hangzhou.aliyuncs.com/kube_containers/flannel:v0.14.0
+  docker tag registry.cn-hangzhou.aliyuncs.com/kube_containers/flannel:v0.14.0 quay.io/coreos/flannel:v0.14.0
+  
+  echo 'docker run --rm -it --gpus all nvidia/cuda:11.0-base nvidia-smi'
 fi
