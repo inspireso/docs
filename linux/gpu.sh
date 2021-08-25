@@ -2,6 +2,8 @@
 
 set -e
 
+nvidia-xconfig -a --cool-bits=28
+
 cat <<"EOF" > /etc/gpus.local
 #!/bin/bash
 
@@ -11,9 +13,9 @@ export DISPLAY=:0
 ##设置所有的gpu
 nvidia-settings -a GPUPowerMizerMode=1
 ##设置功耗
-sudo nvidia-smi -pl 125
+nvidia-smi -pl 85
 ##设置核心频率Mhz(pclk)
-sudo nvidia-smi -lgc 1050,1050
+nvidia-smi -lgc 1050,1050
 
 ##设置clock
 #nvidia-settings -q GPUGraphicsClockOffset
