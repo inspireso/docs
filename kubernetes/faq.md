@@ -258,7 +258,7 @@ done
 ## 清理pod
 
 ```sh
-kubectl get pods --all-namespaces | grep Evicted  | awk '{print "-n", $1, $2}' | xargs kubectl delete pod 
+kubectl get pods --all-namespaces | grep Evicted  | awk '{print "-n", $1, $2}' | xargs kubectl delete --force --grace-period=0 pod 
 
 kubectl get pods --all-namespaces | grep -v Running | awk '{print "-n", $1, $2}' | xargs kubectl delete pod 
 
