@@ -18,7 +18,8 @@ cd /data/eth
 echo "下载 geth"
 mkdir "/data/eth/${GETH_VERSION}" 
 curl -sSL "https://pool-beijing.oss-cn-beijing.aliyuncs.com/mev-geth/latest/geth" -o "/data/eth/${GETH_VERSION}/geth"
-ln -sf "/data/eth/${GETH_VERSION}" /data/eth/geth
+chmod +x "/data/eth/${GETH_VERSION}/geth"
+rm -vf /data/eth/geth && ln -s "/data/eth/${GETH_VERSION}" /data/eth/geth
 ls -la
 
 
