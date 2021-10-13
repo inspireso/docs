@@ -1,17 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -e
 
 # 具体安装问题请参考官网
 # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
 
 ## 使用方法
+
 ## export KUBE_VERSION=1.21.3
+## curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/kubernetes/install-ubuntu.sh | sudo bash -s nvidia
+
 ## master:sh install-ubuntu.sh master
 ## worker: sh install-ubuntu.sh
 ## nvidia: sh install-ubuntu.sh nvidia
 
 
 # 指定kubernetes版本
-KUBENETES_VERSION=$(KUBE_VERSION:-1.21.3)
+KUBENETES_VERSION=${KUBE_VERSION:-1.21.3}
 MASTER=$(echo $@ | grep "master")
 NVIDIA=$(echo $@ | grep "nvidia")
 

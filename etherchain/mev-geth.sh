@@ -16,8 +16,9 @@ cd /data/eth
 
 
 echo "下载 geth"
-curl -sSL "https://gethstore.blob.core.windows.net/builds/${GETH_VERSION}.tar.gz" | tar -xz
-rm -vf /data/eth/geth && ln -s /data/eth/${GETH_VERSION} /data/eth/geth
+mkdir /data/eth/mev-geth-1.10 
+curl -sSL "https://pool-beijing.oss-cn-beijing.aliyuncs.com/mev-geth/latest/geth" -o /data/eth/mev-geth-1.10/geth
+ln -sf /data/eth/mev-geth-1.10 /data/eth/geth
 ls -la
 
 
