@@ -9,11 +9,10 @@ if [ -z "$1" ]; then
 fi
 
 # 指定 geth 版本
-GETH_VERSION=${GETH_VERSION:-geth-linux-amd64-1.10.8-26675454}
+GETH_VERSION=${GETH_VERSION:-geth-linux-amd64-1.10.9-eae3b194.tar.gz}
 
 mkdir -p /data/eth
 cd /data/eth
-
 
 echo "下载 geth"
 curl -sSL "https://gethstore.blob.core.windows.net/builds/${GETH_VERSION}.tar.gz" | tar -xz

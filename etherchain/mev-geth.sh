@@ -9,16 +9,16 @@ if [ -z "$1" ]; then
 fi
 
 # 指定 geth 版本
-GETH_VERSION=${GETH_VERSION:-geth-linux-amd64-1.10.8-26675454}
+GETH_VERSION=${GETH_VERSION:-mev-geth-1.10}
 
 mkdir -p /data/eth
 cd /data/eth
 
 
 echo "下载 geth"
-mkdir /data/eth/mev-geth-1.10 
-curl -sSL "https://pool-beijing.oss-cn-beijing.aliyuncs.com/mev-geth/latest/geth" -o /data/eth/mev-geth-1.10/geth
-ln -sf /data/eth/mev-geth-1.10 /data/eth/geth
+mkdir "/data/eth/${GETH_VERSION}" 
+curl -sSL "https://pool-beijing.oss-cn-beijing.aliyuncs.com/mev-geth/latest/geth" -o "/data/eth/${GETH_VERSION}/geth"
+ln -sf "/data/eth/${GETH_VERSION}" /data/eth/geth
 ls -la
 
 
