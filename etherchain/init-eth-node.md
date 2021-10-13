@@ -22,6 +22,10 @@ df -hl
 ```sh
 
 curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh | bash -s install
+
+or
+
+curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/mev-geth.sh | bash -s install
 ```
 
 
