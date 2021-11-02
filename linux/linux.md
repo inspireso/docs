@@ -989,6 +989,14 @@ sort -u /proc/crypto | grep module | grep aes
 
 
 
+## update-alternatives
+
+```sh
+sudo update-alternatives --config editor
+```
+
+
+
 ## FAQ
 
 ### No space left on device – running out of Inodes

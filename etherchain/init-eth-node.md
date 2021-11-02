@@ -69,6 +69,10 @@ systemctl daemon-reload && systemctl restart geth
 ```sh
 curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh | sudo bash -s upgrade
 
+or
+
+curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/mev-geth.sh | bash -s upgrade
+
 
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec  "admin.nodeInfo"
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "eth.syncing"

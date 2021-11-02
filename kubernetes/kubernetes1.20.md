@@ -316,6 +316,10 @@ EOF
 
 sudo systemctl restart docker
 
+docker pull registry.cn-hangzhou.aliyuncs.com/kube_containers/flannel:v0.14.0
+docker tag registry.cn-hangzhou.aliyuncs.com/kube_containers/flannel:v0.14.0 quay.io/coreos/flannel:v0.14.0
+
+sudo docker pull docker.io/nvidia/cuda:11.0-base
 sudo docker run --rm -it --gpus all nvidia/cuda:11.0-base nvidia-smi
 ```
 

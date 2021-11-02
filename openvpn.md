@@ -1,3 +1,7 @@
+
+
+
+
 # OpenVPN
 
 ## install
@@ -34,10 +38,9 @@ dh /etc/openvpn/easy-rsa/3.0/pki/dh.pem
 tls-auth /etc/openvpn/ta.key 0
 server 10.8.0.0 255.255.255.0
 ifconfig-pool-persist ipp.txt
-push "route 172.16.2.0 255.255.255.0"
+push "route 172.16.0.0 255.255.255.0"
 keepalive 10 120
 cipher AES-256-CBC
-comp-lzo
 max-clients 50
 user openvpn
 group openvpn
@@ -46,10 +49,29 @@ persist-tun
 status openvpn-status.log
 log-append  openvpn.log
 verb 3
-mute 20
 explicit-exit-notify 1
 EOF
 ```
+
+### 日志归档
+
+```sh
+cat <<EOF >  /etc/logrotate.d/openvpn
+/etc/openvpn/*.log
+{
+    size    50M
+    rotate  0
+    missingok
+    nocreate
+    #compress
+    copytruncate
+    nodelaycompress
+    notifempty
+}
+EOF
+```
+
+
 
 ### vi /etc/openvpn/easy-rsa/3.0/vars
 
@@ -122,6 +144,7 @@ echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
 sysctl -p
 
 sysctl -a | grep net.ipv4.conf.eth0.forwarding 
+sysctl -a | grep net.ipv4.conf.eno1.forwarding
 ```
 
 ### 分配用户
@@ -160,14 +183,32 @@ resolv-retry infinite
 nobind
 persist-key
 persist-tun
-comp-lzo
 verb 3
-mute 20
 tls-auth ta.key 1
 keepalive 10 120
 ```
 
 > 注意:  dev, proto,verb,mute配置项和服务器端相同
+
+
+
+### 日志归档
+
+```sh
+cat <<EOF >  /etc/logrotate.d/openvpn
+/etc/openvpn/*.log
+{
+    size    50M
+    rotate  0
+    missingok
+    nocreate
+    #compress
+    copytruncate
+    nodelaycompress
+    notifempty
+}
+EOF
+```
 
 
 
@@ -191,6 +232,35 @@ dmesg -C
 dmesg -Lew
 ```
 
+### sysctl
+
+```
+cat <<EOF >  /etc/security/limits.d/nofile.conf
+root soft nofile 65535
+root hard nofile 65535
+* soft nofile 65535
+* hard nofile 65535
+EOF
+
+cat <<EOF >  /etc/sysctl.d/99-net.conf
+net.ipv6.conf.all.disable_ipv6=1
+net.ipv6.conf.default.disable_ipv6=1
+net.ipv6.conf.lo.disable_ipv6=1
+
+vm.swappiness=0
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_max_tw_buckets = 5000
+net.ipv4.ip_local_port_range = 1024　　61000
+net.ipv4.tcp_keepalive_time = 600
+
+net.ipv4.tcp_slow_start_after_idle=0
+net.ipv4.tcp_wmem=4096 12582912 16777216
+net.ipv4.ip_forward=1
+net.ipv4.tcp_max_syn_backlog=8096
+net.ipv4.tcp_rmem=4096 12582912 16777216
+EOF
+```
 
 
 ### 生成客户端证书错误
