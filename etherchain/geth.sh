@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
 fi
 
 # 指定 geth 版本
-GETH_VERSION=${GETH_VERSION:-geth-linux-amd64-1.10.9-eae3b194}
+GETH_VERSION=${GETH_VERSION:-geth-linux-amd64-1.10.11-7231b3ef}
 
 mkdir -p /data/eth
 cd /data/eth
