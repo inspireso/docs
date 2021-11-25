@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
 fi
 
 # 指定 geth 版本
-GETH_VERSION=${GETH_VERSION:-release-v1-10-13-mev0-4-1}
+GETH_VERSION=${GETH_VERSION:-v1-10-13-mev0-4-1}
 
 mkdir -p /data/eth
 cd /data/eth
@@ -17,7 +17,7 @@ cd /data/eth
 
 echo "下载 geth"
 mkdir -p "/data/eth/${GETH_VERSION}" 
-curl -sSL "https://pool-beijing.oss-cn-beijing.aliyuncs.com/mev-geth/${GETH_VERSION}/geth" -o "/data/eth/${GETH_VERSION}/geth"
+curl -sSL "https://pool-beijing.oss-cn-beijing.aliyuncs.com/mev-geth/release-${GETH_VERSION}/geth" -o "/data/eth/${GETH_VERSION}/geth"
 chmod +x "/data/eth/${GETH_VERSION}/geth"
 rm -vf /data/eth/geth && ln -s "/data/eth/${GETH_VERSION}" /data/eth/geth
 ls -la
