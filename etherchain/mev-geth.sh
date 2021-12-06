@@ -67,6 +67,8 @@ EOF
   cat <<"EOF" >> ~/.bashrc
 alias geth.syncing='/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "eth.syncing"'
 alias geth.nodeInfo='/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "admin.nodeInfo"'
+alias geth.peers='/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "admin.peers"'
+alias geth.peerCount='/data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "net.peerCount"'
 
 EOF
   source ~/.bashrc
