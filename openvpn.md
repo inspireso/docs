@@ -24,7 +24,7 @@ cp -r /usr/share/doc/easy-rsa-3.0.3/vars.example /etc/openvpn/easy-rsa/3.0/vars
 
 ## 服务器端配置
 
-### vi /etc/openvpn/server.conf
+### /etc/openvpn/server.conf
 
 ```sh
 cat <<EOF > /etc/openvpn/server.conf
@@ -41,7 +41,8 @@ ifconfig-pool-persist ipp.txt
 push "route 172.16.0.0 255.255.255.0"
 keepalive 10 120
 cipher AES-256-CBC
-max-clients 50
+duplicate-cn
+max-clients 100
 user openvpn
 group openvpn
 persist-key
@@ -50,8 +51,33 @@ status openvpn-status.log
 log-append  openvpn.log
 verb 3
 explicit-exit-notify 1
+script-security 2
+up /etc/openvpn/up.sh
+down /etc/openvpn/down.sh
 EOF
 ```
+
+```sh
+cat <<EOF > /etc/openvpn/up.sh
+#!/bin/sh
+
+/usr/sbin/iptables -I FORWARD -o tun0 -j ACCEPT
+/usr/sbin/iptables -t nat -A POSTROUTING -s 10.8.0.0/24  -j MASQUERADE
+EOF
+```
+chmod +x /etc/openvpn/up.sh
+
+
+```sh
+cat <<EOF > /etc/openvpn/down.sh
+#!/bin/sh
+
+/usr/sbin/iptables -D FORWARD -o tun0 -j ACCEPT
+/usr/sbin/iptables -t nat -D POSTROUTING -s 10.8.0.0/24  -j MASQUERADE
+EOF
+```
+
+chmod +x /etc/openvpn/down.sh
 
 ### 日志归档
 
@@ -122,25 +148,35 @@ Common Name: openvpn
 
 ```
 
-### 配置防火墙
-
-vi /etc/sysconfig/iptables, 添加如下规则
-
-```sh
-cat <<EOF >> /etc/rc.d/rc.local
-iptables -A INPUT -p udp -m state --state NEW -m udp --dport 8443 -j ACCEPT
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24  -j MASQUERADE
-EOF
-chmod +x /etc/rc.d/rc.local
-systemctl enable rc-local.service && systemctl start rc-local.service
-
-iptables -nL -t nat
-```
-
 ### 开启转发功能
 
 ```sh
-echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+cat <<EOF >  /etc/security/limits.d/nofile.conf
+root soft nofile 65535
+root hard nofile 65535
+* soft nofile 65535
+* hard nofile 65535
+EOF
+
+cat <<EOF >  /etc/sysctl.d/99-net.conf
+net.ipv6.conf.all.disable_ipv6=1
+net.ipv6.conf.default.disable_ipv6=1
+net.ipv6.conf.lo.disable_ipv6=1
+
+vm.swappiness=0
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_max_tw_buckets = 5000
+net.ipv4.ip_local_port_range = 1024　　61000
+net.ipv4.tcp_keepalive_time = 600
+
+net.ipv4.tcp_slow_start_after_idle=0
+net.ipv4.tcp_wmem=4096 12582912 16777216
+net.ipv4.ip_forward=1
+net.ipv4.tcp_max_syn_backlog=8096
+net.ipv4.tcp_rmem=4096 12582912 16777216
+EOF
+
 sysctl -p
 
 sysctl -a | grep net.ipv4.conf.eth0.forwarding 
@@ -214,6 +250,15 @@ EOF
 
 ## FAQ
 
+### 加密私钥
+
+```sh
+openssl rsa -des -in xxx-nopass.key -out xxx.key
+
+```
+
+
+
 ### 转发失败
 
 ```sh
@@ -240,6 +285,11 @@ root soft nofile 65535
 root hard nofile 65535
 * soft nofile 65535
 * hard nofile 65535
+EOF
+
+cat <<"EOF" > /usr/lib/systemd/system/openvpn@.service.d/limit.conf
+[Service]
+LimitNOFILE=65535
 EOF
 
 cat <<EOF >  /etc/sysctl.d/99-net.conf
@@ -282,5 +332,6 @@ cd /etc/openvpn/easy-rsa/3.0
 ./easyrsa gen-crl
 
 systemctl restart openvpn@server
+
 ```
 
