@@ -7,12 +7,18 @@ echo “磁盘基准测试”
 sudo yum -y install libaio libaio-devel fio
 
 echo "初始化数据盘"
+cp /etc/fstab /etc/fstab.bak
+
 mkfs.ext4 /dev/vdb
+echo `blkid /dev/vdb | awk '{print $2}' | sed 's/\"//g'` /data ext4 defaults 0 0 >> /etc/fstab
+
+or 
+
+mkfs.xfs /dev/vdb
+echo `blkid /dev/vdb | awk '{print $2}' | sed 's/\"//g'` /data xfs defaults,noatime 0 0 >> /etc/fstab
+
 
 mkdir /data
-cp /etc/fstab /etc/fstab.bak
-echo `blkid /dev/vdb | awk '{print $2}' | sed 's/\"//g'` /data ext4 defaults 0 0 >> /etc/fstab
-cat /etc/fstab
 mount -a
 df -hl
 ```
