@@ -270,8 +270,15 @@ iptables -nL -t nat
 sysctl -a | grep net.ipv4.conf.eth0.forwarding 
 
 # 跟踪 iptables
-modprobe ipt_LOG ip6t_LOG nfnetlink_log
-iptables -t raw -A PREROUTING -p icmp -s 10.8.0.0/24 -j TRACE
+#centos6
+modprobe ipt_LOG
+sysctl net.netfilter.nf_log.2=ipt_LOG
+#centos7
+modprobe nf_log_ipv4
+sysctl net.netfilter.nf_log.2=nf_log_ipv4
+
+iptables -t raw -A PREROUTING -p icmp -j TRACE
+iptables -t raw -A PREROUTING -d 8.8.8.8 -j TRACE
 
 dmesg -C
 dmesg -Lew
@@ -309,6 +316,8 @@ net.ipv4.tcp_wmem=4096 12582912 16777216
 net.ipv4.ip_forward=1
 net.ipv4.tcp_max_syn_backlog=8096
 net.ipv4.tcp_rmem=4096 12582912 16777216
+
+net.netfilter.nf_conntrack_max = 4194304
 EOF
 ```
 
