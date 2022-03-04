@@ -14,8 +14,6 @@ apt install autossh
 ```sh
 autossh [-V] [-M port[:echo_port]] [-f] [SSH_OPTIONS]
 
-注: -M为autossh参数， -CqTfnN -D 为ssh参数
-
 编号	参数	含义说明
 1	-M	用于有问题时就会自动重连；服务器 echo 机制使用的端口
 2	-D	本地机器动态的应用程序端口转发
@@ -53,13 +51,10 @@ After=network.target network-online.target ssh.service
 
 [Service]
 Environment="AUTOSSH_GATETIME=0"
-User=autossh
-Type=simple
-ExecStart=/usr/bin/autossh -M 0 -NL localIp:localPort:remoteIp:remotePort usernamme@example.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o BatchMode=yes -o StrictHostKeyChecking=no -i SSH_KEY_FILE_PATH
-ExecStop=/bin/kill $MAINPID
-ExecReload=/bin/kill -HUP $MAINPID 
-KillMode=process 
-Restart=always
+User=[REPLACE THIS TO YOUR USERNAME]
+ExecStart=/usr/bin/autossh -M 0 -N -q -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -L localIp:localPort:remoteIp:remotePort usernamme@example.com
+
+ExecStop=/usr/bin/killall -s KILL autossh
 
 [Install]
 WantedBy=multi-user.target
@@ -83,13 +78,10 @@ After=network.target network-online.target ssh.service
 
 [Service]
 Environment="AUTOSSH_GATETIME=0"
-User=autossh
-Type=simple
-ExecStart=/usr/bin/autossh -M 0 -NR remoteIp:remotePort:localIp:localPort usernamme@example.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o BatchMode=yes -o StrictHostKeyChecking=no -i SSH_KEY_FILE_PATH
-ExecStop=/bin/kill $MAINPID
-ExecReload=/bin/kill -HUP $MAINPID 
-KillMode=process 
-Restart=always
+User=[REPLACE THIS TO YOUR USERNAME]
+ExecStart=/usr/bin/autossh -M 0 -N -q -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -R localIp:localPort:remoteIp:remotePort usernamme@example.com
+
+ExecStop=/usr/bin/killall -s KILL autossh
 
 [Install]
 WantedBy=multi-user.target

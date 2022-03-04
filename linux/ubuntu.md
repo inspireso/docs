@@ -35,3 +35,26 @@ sudo nmcli con add type team-slave con-name team0-port2 ifname eno2 master team0
 sudo nmcli con show
 ```
 
+### 配置静态ip
+sudo vi /etc/netplan/50-cloud-init.yaml
+
+```yaml
+network:
+    ethernets:
+        ens33:
+            dhcp4: no
+            addresses: [192.168.1.100/24]
+            optional: true
+            gateway4: 192.168.1.1
+            nameservers:
+                    addresses: [223.5.5.5,223.6.6.6]
+ 
+    version: 2
+
+```
+
+```sh
+sudo netplan apply
+
+```
+

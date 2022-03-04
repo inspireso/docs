@@ -76,6 +76,11 @@ cat /proc/pid/limits
 ### 修改最大连接数
 
 ```sh
+default_nproc = max_threads/2 = MemTotal(KB) / 256(KB)
+
+16G内存
+default_nproc = 16*1024*1024/256 = 65536
+
 vi /etc/security/limits.conf
 
 root soft nofile 65535
@@ -535,6 +540,10 @@ chmod 600 ~/.ssh/config
 echo "StrictHostKeyChecking no" >> ~/.ssh/config
 echo "UserKnownHostsFile /dev/null" >> ~/.ssh/config
 restorecon -r -vv ~/.ssh/authorized_keys
+
+#本地映射
+#ssh -Cg -L 本地端口:目标地址:目标端口 跳板机账户@跳板机IP
+ssh -Cg -L 8081:172.16.0.1:80 root@remote-ip
 
 ```
 
