@@ -43,6 +43,8 @@ User=root
 Restart=always
 RestartSec=12
 ExecStart=/data/eth/geth/geth $GETH_API_OPTS $GETH_NETWORK_OPTS $GETH_MINE_OPTS $GETH_ETHASH_OPTS $GETH_METRICS_OPTS $GETH_EXTRA_OPTS
+ExecStop=/bin/kill -s SIGTERM $MAINPID
+TimeoutStopSec= 180
 
 [Install]
 WantedBy=default.target
