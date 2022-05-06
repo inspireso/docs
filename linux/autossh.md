@@ -52,9 +52,12 @@ After=network.target network-online.target ssh.service
 [Service]
 Environment="AUTOSSH_GATETIME=0"
 User=[REPLACE THIS TO YOUR USERNAME]
-ExecStart=/usr/bin/autossh -M 0 -N -q -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -L localIp:localPort:remoteIp:remotePort usernamme@example.com
-
-ExecStop=/usr/bin/killall -s KILL autossh
+Type=simple
+ExecStart=/usr/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -NL localIp:localPort:remoteIp:remotePort usernamme@example.com
+ExecStop=/bin/kill $MAINPID
+ExecReload=/bin/kill -HUP $MAINPID 
+KillMode=process 
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
@@ -79,12 +82,18 @@ After=network.target network-online.target ssh.service
 [Service]
 Environment="AUTOSSH_GATETIME=0"
 User=[REPLACE THIS TO YOUR USERNAME]
-ExecStart=/usr/bin/autossh -M 0 -N -q -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -R localIp:localPort:remoteIp:remotePort usernamme@example.com
-
-ExecStop=/usr/bin/killall -s KILL autossh
+Type=simple
+ExecStart=/usr/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -NR localIp:localPort:remoteIp:remotePort usernamme@example.com
+ExecStop=/bin/kill $MAINPID
+ExecReload=/bin/kill -HUP $MAINPID 
+KillMode=process 
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 ```
+
+ssh -NR 0.0.0.0:8083:10.16.0.1:80 root@8.134.95.148
+ssh root@8.134.95.148

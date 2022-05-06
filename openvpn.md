@@ -12,13 +12,13 @@ yum install -y openssl openssl-devel lzo lzo-devel pam pam-devel automake pkgcon
 yum install -y openvpn
 yum install -y easy-rsa
 
-groupadd openvpn
-useradd -g openvpn -M -s /sbin/nologin openvpn
+#groupadd openvpn
+#useradd -g openvpn -M -s /sbin/nologin openvpn
 
 mkdir /etc/openvpn/
 cp -R /usr/share/easy-rsa/ /etc/openvpn/
-cp /usr/share/doc/openvpn-2.4.7/sample/sample-config-files/server.conf /etc/openvpn/
-cp -r /usr/share/doc/easy-rsa-3.0.3/vars.example /etc/openvpn/easy-rsa/3.0/vars
+cp /usr/share/doc/openvpn-2.4.9/sample/sample-config-files/server.conf /etc/openvpn/
+cp -r /usr/share/doc/easy-rsa/vars.example /etc/openvpn/easy-rsa/3/vars
 
 ```
 
@@ -47,6 +47,10 @@ user openvpn
 group openvpn
 persist-key
 persist-tun
+txqueuelen 15000
+#mssfix 0
+#tun-mtu 9000
+
 status openvpn-status.log
 log-append  openvpn.log
 verb 3
@@ -277,8 +281,16 @@ sysctl net.netfilter.nf_log.2=ipt_LOG
 modprobe nf_log_ipv4
 sysctl net.netfilter.nf_log.2=nf_log_ipv4
 
+iptables -t raw -F
 iptables -t raw -A PREROUTING -p icmp -j TRACE
-iptables -t raw -A PREROUTING -d 8.8.8.8 -j TRACE
+
+#centos8
+modprobe nf_log_ipv4
+sysctl net.netfilter.nf_log.2=nf_log_ipv4
+
+iptables -t raw -F
+iptables -t raw -A PREROUTING -p tcp -j LOG --log-prefix "iptables:"
+
 
 dmesg -C
 dmesg -Lew

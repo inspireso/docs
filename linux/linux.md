@@ -247,6 +247,10 @@ ip addr
 # 网络接口统计信息
 ip -s link
 
+# 设置网卡的发送队列
+ip link set dev eth0 txqueuelen 10000
+ifconfig eth0 txqueuelen 10000
+
 ## ip route显示和设定路由
 #显示路由表
 ip route
@@ -958,9 +962,50 @@ vi /etc/chrony.conf
 #在行首添加
 server ntp.aliyun.com iburst
 
-#开机自动启动，并启动服务
+#开机自动启动，并启动服务systemctl start chronyd
 systemctl enable chronyd
 systemctl start chronyd
+
+```
+
+### 代理 NTP 服务
+
+```sh
+sed -i 's/^bindcmdaddress/#bindcmdaddress/g' /etc/chrony.conf
+cat >> /etc/chrony.conf <<EOF
+bindcmdaddress 0.0.0.0
+allow 10.0.0.0/8
+local stratum 8
+EOF
+
+cat > /usr/lib/systemd/system/chronyd.service <<EOF
+[Unit]
+Description=NTP client/server
+Documentation=man:chronyd(8) man:chrony.conf(5)
+After=ntpdate.service sntp.service ntpd.service
+Conflicts=ntpd.service systemd-timesyncd.service
+ConditionCapability=CAP_SYS_TIME
+
+[Service]
+Type=forking
+PIDFile=/run/chrony/chronyd.pid
+EnvironmentFile=-/etc/sysconfig/chronyd
+ExecStart=/usr/sbin/chronyd $OPTIONS
+ExecStartPost=/usr/libexec/chrony-helper update-daemon
+ExecStopPost=/usr/libexec/chrony-helper remove-daemon-state
+ExecStartPost=/sbin/iptables -t nat -A PREROUTING -p udp --dport 123 -j REDIRECT --to-ports 123
+ExecStopPost=/sbin/iptables -t nat -D PREROUTING -p udp --dport 123 -j REDIRECT --to-ports 123
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload && systemctl restart chronyd
+ss -lntup | grep chronyd
+iptables -nvL -t nat
 
 ```
 
