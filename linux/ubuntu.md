@@ -41,11 +41,11 @@ sudo vi /etc/netplan/50-cloud-init.yaml
 ```yaml
 network:
     ethernets:
-        ens33:
+        enp5s0:
             dhcp4: no
-            addresses: [192.168.1.100/24]
+            addresses: [172.16.6.223/23]
             optional: true
-            gateway4: 192.168.1.1
+            gateway4: 172.16.6.125
             nameservers:
                     addresses: [223.5.5.5,223.6.6.6]
  
@@ -57,4 +57,32 @@ network:
 sudo netplan apply
 
 ```
+
+
+## DNS
+
+dns服务
+- systemd-resolved: 
+- systemd-networkd:
+
+全局配置
+
+/etc/systemd/resolved.conf
+
+针对单个链接(conn)的静态配置文件
+
+/etc/systemd/network/*.network
+
+```sh
+ls -la /etc/resolv.conf
+#查看 dns 状态
+systemd-resolve --status
+
+#修改全局 dns
+vi /etc/systemd/resolved.conf
+
+systemctl restart systemd-resolved.service
+
+```
+
 
