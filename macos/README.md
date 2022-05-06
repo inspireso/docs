@@ -8,6 +8,17 @@
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 ```
 
+### backup && restore
+
+```sh
+# backup
+brew bundle dump
+
+# restore
+brew bundle
+
+```
+
 ### 替换源
 
 ```sh
@@ -129,7 +140,7 @@ sudo dd if=./ubuntu.iso of=/dev/disk2 bs=1m
 
 ```
 sudo diskutil list
-sudo diskutil unmountDisk /dev/disk2
+sudo diskutil unmountDisk /dev/disk4
 sudo mkdir  /Volumes/mnt
 sudo mount_ntfs -o rw,nobrowse /dev/disk2s1 /Volumes/mnt/
 ....
