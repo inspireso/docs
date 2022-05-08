@@ -94,6 +94,3 @@ WantedBy=multi-user.target
 EOF
 
 ```
-
-ssh -NR 0.0.0.0:8083:10.16.0.1:80 root@8.134.95.148
-ssh root@8.134.95.148
