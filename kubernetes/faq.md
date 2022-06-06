@@ -216,7 +216,26 @@ kubeadm alpha kubeconfig user --org system:nodes --client-name system:node:$WORK
 ```
 
 
+## 更新集群证书（v1.21.0)
 
+### 更新证书、conf文件
+在master下执行以下命令
+```
+# kubeadm certs renew all
+```
+查看证书的有效期
+```
+# kubeadm certs check-expiration
+```
+
+更新kubectl配置文件
+```
+# cp admin.conf ~/.kube/config
+```
+重启kubelet
+```
+# systemctl restart kubelet
+```
 
 
 ## GC
