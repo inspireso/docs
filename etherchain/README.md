@@ -48,7 +48,7 @@ curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/mev
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "admin.peers" > admin.peers
 ```
 
-## 添加 peer
+### 添加 peer
 
 ```sh
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec "admin.addPeer('enode')"
