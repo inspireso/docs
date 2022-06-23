@@ -29,11 +29,11 @@ df -hl
 
 ```sh
 
-curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh | bash -s install
+curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/ethereum/geth.sh | bash -s install
 
 or
 
-curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/mev-geth.sh | bash -s install
+curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/ethereum/mev-geth.sh | bash -s install
 ```
 
 
@@ -60,11 +60,11 @@ curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/mev
 ### 升级版本
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/geth.sh | sudo bash -s upgrade
+curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/ethereum/geth.sh | sudo bash -s upgrade
 
 or
 
-curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/etherchain/mev-geth.sh | bash -s upgrade
+curl -sSL https://raw.githubusercontent.com/inspireso/docs/master/ethereum/mev-geth.sh | bash -s upgrade
 
 
 /data/eth/geth/geth attach /data/eth/gethdata/geth.ipc --exec  "admin.nodeInfo"
