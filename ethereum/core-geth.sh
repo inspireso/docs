@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
 fi
 
 # 指定 geth 版本
-GETH_VERSION=${GETH_VERSION:-v1.12.6}
+GETH_VERSION=${GETH_VERSION:-v1.12.8}
 
 
 mkdir -p /data/etc

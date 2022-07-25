@@ -47,11 +47,12 @@ systemctl daemon-reload && systemctl restart geth
 ```
 ### run **beacon node**
 ```shell
-PRYSM_VERSION=${PRYSM_VERSION:-v2.1.3-rc.4-linux-amd64}
+PRYSM_VERSION=${PRYSM_VERSION:-v2.1.3}
 
 # "下载"
 mkdir -p "/data/eth2/prysm-${PRYSM_VERSION}"
-curl -sSL -o "/data/eth2/prysm-${PRYSM_VERSION}/beacon-chain"  "https://github.com/prysmaticlabs/prysm/releases/download/v2.1.3-rc.4/beacon-chain-v2.1.3-rc.4-linux-amd64"
+curl -sSL -o "/data/eth2/prysm-${PRYSM_VERSION}/beacon-chain"  "https://github.com/prysmaticlabs/prysm/releases/download/${PRYSM_VERSION}/beacon-chain-${PRYSM_VERSION}-linux-amd64"
+chmod +x "/data/eth2/prysm-${PRYSM_VERSION}/beacon-chain"
 rm -vf /data/eth2/prysm && ln -s /data/eth2/prysm-${PRYSM_VERSION} /data/eth2/prysm
 
 curl -sSL -o "/data/eth2/genesis.ssz" "https://github.com/eth-clients/merge-testnets/raw/main/ropsten-beacon-chain/genesis.ssz"
@@ -68,11 +69,12 @@ After=network.target
 LimitNOFILE=65535
 Environment="EL_OPTS=--http-web3provider=http://127.0.0.1:8551 --jwt-secret=/data/eth2/el/geth/jwtsecret"
 Environment="CL_OPTS=--rpc-host=0.0.0.0 --monitoring-host=0.0.0.0 --genesis-state=/data/eth2/genesis.ssz --datadir=/data/eth2/cl"
+Environment="FEE_OPTS=--suggested-fee-recipient=YOUR_ETH_ADDRESS"
 Type=simple
 User=root
 Restart=always
 RestartSec=12
-ExecStart=/data/eth2/prysm/beacon-chain --ropsten $CL_OPTS $EL_OPTS
+ExecStart=/data/eth2/prysm/beacon-chain --ropsten $FEE_OPTS $CL_OPTS $EL_OPTS
 ExecStop=/bin/kill -s SIGTERM $MAINPID
 TimeoutStopSec= 180
 
@@ -89,11 +91,12 @@ systemctl daemon-reload && systemctl restart beacon
 ### run validator
 
 ```shell
-PRYSM_VERSION=${PRYSM_VERSION:-v2.1.3-rc.4-linux-amd64}
+PRYSM_VERSION=${PRYSM_VERSION:-v2.1.3}
 
 # "下载"
 mkdir -p "/data/eth2/prysm-${PRYSM_VERSION}"
-curl -sSL -o "/data/eth2/prysm-${PRYSM_VERSION}/validator"  "https://github.com/prysmaticlabs/prysm/releases/download/v2.1.3-rc.4/validator-v2.1.3-rc.4-linux-amd64"
+curl -sSL -o "/data/eth2/prysm-${PRYSM_VERSION}/validator"  "https://github.com/prysmaticlabs/prysm/releases/download/${PRYSM_VERSION}/validator-${PRYSM_VERSION}-linux-amd64"
+chmod +x "/data/eth2/prysm-${PRYSM_VERSION}/validator"
 rm -vf /data/eth2/prysm && ln -s /data/eth2/prysm-${PRYSM_VERSION} /data/eth2/prysm
 ls -la
 

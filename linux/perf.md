@@ -113,5 +113,30 @@ System-ms:任务和子线程在系统级别使用的毫秒数。
 Guest-ms:任务和子线程在虚拟机(running a virtual processor)使用的毫秒数。
 ```
 
+## 网络基准测试
+
+### TCP/UDP 性能
+
+```sh
+
+# Ubuntu
+apt-get install iperf3
+# CentOS
+yum install iperf3
+
+
+
+# -s表示启动服务端，-i表示汇报间隔，-p表示监听端口
+iperf3 -s -i 1 -p 8443
+
+
+# -c表示启动客户端，192.168.0.30为目标服务器的IP
+# -b表示目标带宽(单位是bits/s)
+# -t表示测试时间
+# -P表示并发数，-p表示目标服务器监听端口
+iperf3 -c 172.16.10.131 -b 1G -t 15 -P 2 -p 8443
+
+```
+
 
 
