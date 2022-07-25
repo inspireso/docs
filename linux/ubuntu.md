@@ -85,4 +85,12 @@ systemctl restart systemd-resolved.service
 
 ```
 
+## apt
+
+```sh
+dpkg-scanpackages -m . > Packages
+apt-ftparchive release . > Release
+
+```
+
 

@@ -1,13 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
 nvidia-xconfig -a --cool-bits=28
 
 cat <<"EOF" > /etc/gpus.local
-#!/bin/bash
+#!/usr/bin/env bash
 
 export DISPLAY=:0
+nvidia-smi -pm 1
 
 #1660s
 ##设置所有的gpu
