@@ -5,7 +5,20 @@
 ### install
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+
+#使用ssh方式获取 git 仓库
+export HOMEBREW_BREW_GIT_REMOTE="git@github.com:Homebrew/brew.git"  # put your Git mirror of Homebrew/brew here
+export HOMEBREW_CORE_GIT_REMOTE="git@github.com:Homebrew/homebrew-core.git"  # put your Git mirror of Homebrew/homebrew-core here
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+brew tap homebrew/cask --custom-remote git@github.com:Homebrew/homebrew-cask.git
+brew tap homebrew/cask-fonts --custom-remote git@github.com:Homebrew/homebrew-cask-fonts.git
+brew tap homebrew/cask-drivers --custom-remote git@github.com:Homebrew/homebrew-cask-drivers.git
+brew tap homebrew/cask-versions --custom-remote git@github.com:Homebrew/homebrew-cask-versions.git
+brew tap homebrew/services --custom-remote git@github.com:Homebrew/homebrew-services.git
+brew tap homebrew/bundle --custom-remote git@github.com:Homebrew/homebrew-bundle.git
+brew tap homebrew/autoupdate --custom-remote git@github.com:Homebrew/homebrew-autoupdate.git
+
 ```
 
 ### backup && restore
@@ -48,7 +61,8 @@ git -C "$(brew --repo homebrew/cask-fonts)" remote set-url origin https://mirror
 git -C "$(brew --repo homebrew/cask-drivers)" remote set-url origin https://mirrors.aliyun.com/homebrew/homebrew-cask-drivers.git
 
 # 修改 homebrew-cask-versions.git 为阿里源
-git -C "$(brew --repo homebrew/cask-drivers)" remote set-url origin https://mirrors.aliyun.com/homebrew/homebrew-cask-versions.git
+git -C "$(brew --repo homebrew/cask-versions)" remote set-url origin https://mirrors.aliyun.com/homebrew/homebrew-cask-versions.git
+
 
 # zsh 替换 brew bintray 镜像
 echo 'export HOMEBREW_BOTTLE_DOMAIN=https://mirrors.aliyun.com/homebrew/homebrew-bottles' >> ~/.zprofile
