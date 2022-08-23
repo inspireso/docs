@@ -48,6 +48,8 @@ group openvpn
 persist-key
 persist-tun
 txqueuelen 1000
+tun-mtu 1500
+mssfix 1431
 #mssfix 0
 #tun-mtu 9000
 
