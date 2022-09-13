@@ -13,7 +13,7 @@ GETH_VERSION=${GETH_VERSION:-v1.12.8}
 
 
 mkdir -p /data/etc
-cd /data/eth
+cd /data/etc
 
 echo "下载 geth"
 wget "https://github.com/etclabscore/core-geth/releases/download/${GETH_VERSION}/core-geth-linux-${GETH_VERSION}.zip" 
