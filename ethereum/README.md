@@ -20,7 +20,7 @@ echo `blkid /dev/vdb | awk '{print $2}' | sed 's/\"//g'` /data xfs defaults,noat
 echo `blkid /dev/nvme1n1 | awk '{print $2}' | sed 's/\"//g'` /data xfs defaults,noatime 0 0 >> /etc/fstab
 
 
-mkdir /data
+mkdir -p /data
 mount -a
 df -hl
 ```

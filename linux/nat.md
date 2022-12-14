@@ -10,9 +10,8 @@ net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
 
 net.ipv4.ip_forward=1
-net.ipv4.ip_local_port_range = 1024 65535
-net.ipv4.tcp_tw_recycle=0
-net.ipv4.tcp_timestamps=0
+net.ipv4.ip_local_port_range=1024 65535
+
 
 net.netfilter.nf_conntrack_max=4194304
 net.netfilter.nf_conntrack_buckets=65536
@@ -42,17 +41,30 @@ net.ipv4.udp_mem=16777216 16777216 16777216
 net.ipv4.udp_rmem_min=4096
 net.ipv4.udp_wmem_min=4096
 
-#net.ipv4.tcp_max_syn_backlog = 3240000
+net.ipv4.tcp_syn_retries=3
+net.ipv4.tcp_synack_retries=3
+net.ipv4.tcp_orphan_retries=3
+net.ipv4.tcp_retries2 = 8
+
+net.ipv4.tcp_syncookies = 0
+net.ipv4.tcp_max_syn_backlog=3240000
+net.ipv4.tcp_abort_on_overflow = 1
+net.ipv4.tcp_synack_retries=3
 net.ipv4.tcp_max_tw_buckets=1048576
 net.ipv4.tcp_slow_start_after_idle=0
 
-
-net.ipv4.tcp_keepalive_time = 30
-net.ipv4.tcp_keepalive_intvl = 30
+# TIME_WAIT
+net.ipv4.tcp_tw_recycle=0
+net.ipv4.tcp_tw_reuse=1
+net.ipv4.tcp_timestamps=1
+#表示当keepalive起用的时候，TCP发送keepalive消息的频度。默认 7200
+net.ipv4.tcp_keepalive_time = 60
+#keepalive探测包的发送间隔,默认 75
+net.ipv4.tcp_keepalive_intvl = 20
+#如果对方不予应答，探测包的发送次数,默认 9
 net.ipv4.tcp_keepalive_probes = 3
-
-net.ipv4.tcp_syncookies = 1 
-net.ipv4.tcp_tw_reuse = 1
+#表示如果套接字由本端要求关闭，这个参数决定了它保持在FIN-WAIT-2状态的时间,默认 60
+net.ipv4.tcp_fin_timeout = 30
 
 EOF
 

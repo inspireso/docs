@@ -7,21 +7,21 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /opt/nginx/conf:/etc/nginx/conf.d
-      - /opt/nginx/vhost:/etc/nginx/vhost.d
-      - /opt/nginx/html:/usr/share/nginx/html
-      - /opt/nginx/certs:/etc/nginx/certs:ro
+      - conf:/etc/nginx/conf.d
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - certs:/etc/nginx/certs:ro
       - /var/run/docker.sock:/tmp/docker.sock:ro
 
   acme-companion:
     image: nginxproxy/acme-companion
     environment:
-      - DEFAULT_EMAIL=your@email.address
+      - DEFAULT_EMAIL=xinenlan@uutaka.com
     volumes_from:
       - nginx-proxy
     volumes:
-      - /opt/nginx/certs:/etc/nginx/certs:rw
-      - /opt/nginx/acme:/etc/acme.sh
+      - certs:/etc/nginx/certs:rw
+      - acme:/etc/acme.sh
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   app:
@@ -32,6 +32,10 @@ services:
       - VIRTUAL_PORT=80
       - LETSENCRYPT_HOST=your.domain.name
       - LETSENCRYPT_EMAIL=your@email.address
-networks:
-  nginx:
-    external: true
+
+volumes:
+  conf:
+  vhost:
+  html:
+  certs:
+  acme:
