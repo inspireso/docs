@@ -14,6 +14,8 @@ apt install autossh
 ```sh
 autossh [-V] [-M port[:echo_port]] [-f] [SSH_OPTIONS]
 
+注: -M为autossh参数， -CqTfnN -D 为ssh参数
+
 编号	参数	含义说明
 1	-M	用于有问题时就会自动重连；服务器 echo 机制使用的端口
 2	-D	本地机器动态的应用程序端口转发
@@ -51,9 +53,9 @@ After=network.target network-online.target ssh.service
 
 [Service]
 Environment="AUTOSSH_GATETIME=0"
-User=[REPLACE THIS TO YOUR USERNAME]
+User=autossh
 Type=simple
-ExecStart=/usr/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -NL localIp:localPort:remoteIp:remotePort usernamme@example.com
+ExecStart=/usr/bin/autossh -M 0 -NL localIp:localPort:remoteIp:remotePort usernamme@example.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o BatchMode=yes -o StrictHostKeyChecking=no -i SSH_KEY_FILE_PATH
 ExecStop=/bin/kill $MAINPID
 ExecReload=/bin/kill -HUP $MAINPID 
 KillMode=process 
@@ -70,7 +72,7 @@ EOF
 
 ```sh
 
-ssh -R remoteIp:remotePort:localIp:localPort usernamme@example.com
+ssh -R localIp:localPort:remoteIp:remotePort usernamme@example.com
 
 #autossh.service
 cat > /etc/systemd/system/autossh.service <<EOF
@@ -81,9 +83,9 @@ After=network.target network-online.target ssh.service
 
 [Service]
 Environment="AUTOSSH_GATETIME=0"
-User=[REPLACE THIS TO YOUR USERNAME]
+User=autossh
 Type=simple
-ExecStart=/usr/bin/autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -NR localIp:localPort:remoteIp:remotePort usernamme@example.com
+ExecStart=/usr/bin/autossh -M 0 -NR localIp:localPort:remoteIp:remotePort usernamme@example.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o BatchMode=yes -o StrictHostKeyChecking=no -i SSH_KEY_FILE_PATH
 ExecStop=/bin/kill $MAINPID
 ExecReload=/bin/kill -HUP $MAINPID 
 KillMode=process 

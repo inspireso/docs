@@ -1,0 +1,26 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // https://github.com/vadimcn/vscode-lldb/blob/master/MANUAL.md
+      "type": "lldb",
+      "request": "launch",
+      "name": "debug",
+      "cargo": {
+        // "args": ["test", "--no-run", "--lib"],      // Cargo command line to build the debug target
+        "args": [
+          "build",
+          "-v",
+          // 一定要指定 bin, 不然无法直接 debug
+          "--bin=rust-codes",
+        ],
+        "problemMatcher": "$rustc",                 // Problem matcher(s) to apply to cargo output.
+      },
+      "args": [],
+      "cwd": "${workspaceFolder:rust}",
+    }
+  ]
+}
