@@ -13,6 +13,7 @@ kernel: 3.10.0-693.el7.x86_64 #1 SMP Tue Aug 22 21:09:27 UTC 2017 x86_64 x86_64 
 #更改镜像为阿里镜像
 mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
 curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+yum makecache fast
 
 #卸载防火墙
 systemctl stop firewalld && sudo systemctl disable firewalld && yum remove -y firewalld
@@ -109,7 +110,7 @@ repo_gpgcheck=1
 gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 EOF
 yum makecache fast
-yum install -y kubelet-1.14.8-0 kubeadm-1.14.8-0 kubectl-1.14.8-0
+yum install -y --nogpgcheck kubelet-1.14.8-0 kubeadm-1.14.8-0 kubectl-1.14.8-0
 systemctl enable kubelet && systemctl start kubelet
 
 # 配置docker

@@ -78,8 +78,7 @@ brew update
 ### install
 
 ```sh
-brew install automake
-brew install opencc
+brew install cmake python3 opencc
 
 # 进入下载目录
 cd ~/Downloads/
@@ -87,18 +86,15 @@ cd ~/Downloads/
 git clone https://github.com/man-pages-zh/manpages-zh.git manpages-zh
 # 进入源码包文件夹
 cd manpages-zh/
-# 编译安装 1
-autoreconf --install --force
-# 编译安装 2
-./configure
-# 编译安装 3
-sudo make
-# 编译安装 4
+# 编译安装
+mkdir build && cd build/
+cmake .. -DENABLE_ZHTW=no
+make
 sudo make install
 # 配置别名（如果是 zsh 对应处理即可）
-echo "alias cman='man -M /usr/local/share/man/zh_CN'" >> ~/.bash_profile
+echo "alias cman='man -M /usr/local/share/man/zh_CN'" >> ~/.zprofile
 # 使别名生效
-source ~/.bash_profile
+source ~/.zprofile
 # 我们就安装上了中文版本的 man 工具了，但是运行命令会发现乱码。
 cman ls
 ```

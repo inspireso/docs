@@ -81,3 +81,15 @@ systemctl enable getc
 systemctl daemon-reload && systemctl restart getc
 systemctl status getc
 
+
+## docker
+
+docker run -d \
+    --name core-geth \
+    -v /data/mordor:/root \
+    -p 30303:30303 \
+    -p 8545:8545 \
+    etclabscore/core-geth:version-1.12.8 \
+    --mordor \
+    --http --http.addr 0.0.0.0 --http.port 8545 \
+    --mine --miner.etherbase 0x65A07d3081a9A6eE9BE122742c84ffea6964aCd2
