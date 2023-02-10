@@ -15,8 +15,11 @@ fi
 
 OVPN_USER=$2
 
-EASY_RSA_DIR=/etc/openvpn/easy-rsa/3.0
-OVPN_CONF="$EASY_RSA_DIR/pki/clients/$OVPN_USER.ovpn"
+EASY_RSA_DIR=/etc/openvpn/easy-rsa/3
+OVPN_CLIENT_DIR=/etc/openvpn/client
+OVPN_TPL="$OVPN_CLIENT_DIR/client.ovpn.tpl"
+OVPN_CONF="$OVPN_CLIENT_DIR/$OVPN_USER.ovpn"
+
 
 cd $EASY_RSA_DIR
 
@@ -25,8 +28,7 @@ if  [ "$1" == "create" ];  then
   ./easyrsa build-client-full $OVPN_USER nopass
 fi
 
-OVPN_CONF="/etc/openvpn/easy-rsa/3.0/pki/clients/$OVPN_USER.ovpn"
-cp "./pki/clients/client.tpl.ovpn" "./pki/clients/$OVPN_USER.ovpn"
+cp "$OVPN_TPL" "$OVPN_CONF"
 echo '<cert>' >> "$OVPN_CONF"
 sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' "./pki/issued/$OVPN_USER.crt" >> "$OVPN_CONF"
 echo '</cert>' >> "$OVPN_CONF"

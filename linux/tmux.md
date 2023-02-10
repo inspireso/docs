@@ -96,13 +96,13 @@
 ## 常用命令
 
 ```sh
-# 新建会话，比如新创建一个会话以"ccc"命名
-[root@cs ~]# tmux new -s ccc
+# 新建会话，比如新创建一个会话以"t"命名
+[root@cs ~]# tmux new -s t
  
 加上参数-d，表示在后台新建会话
-[root@cs ~]# tmux new -s shibo -d
+[root@cs ~]# tmux new -s t -d
 [root@cs ~]# tmux ls
-shibo: 1 windows (created Tue Oct  2 19:22:32 2018) [135x35]
+t: 1 windows (created Tue Oct  2 19:22:32 2018) [135x35]
  
 # 查看创建得所有会话
 [root@cs ~]# tmux ls
@@ -112,7 +112,7 @@ ccc: 1 windows (created Wed Aug 30 17:01:05 2017) [112x22]
    
 # 登录一个已知会话。即从终端环境进入会话。
 第一个参数a也可以写成attach。后面的aaa是会话名称。
-[root@cs ~]# tmux a -t aaa 
+[root@cs ~]# tmux a -t t 
 　　
 # 退出会话不是关闭：
 登到某一个会话后，依次按键ctrl-b + d，这样就会退化该会话，但不会关闭会话。
@@ -123,18 +123,18 @@ ccc: 1 windows (created Wed Aug 30 17:01:05 2017) [112x22]
 aaa: 2 windows (created Wed Aug 30 16:54:33 2017) [112x22]
 bbb: 1 windows (created Wed Aug 30 19:02:09 2017) [112x22]
    
-[root@cs ~]# tmux kill-session -t bbb
+[root@cs ~]# tmux kill-session -t t
    
 [root@cs ~]# tmux ls
 aaa: 2 windows (created Wed Aug 30 16:54:33 2017) [112x22]
   
 # 重命名会话
 [root@cs ~]# tmux ls  
-wangshibo: 1 windows (created Sun Sep 30 10:17:00 2018) [136x29] (attached)
+t: 1 windows (created Sun Sep 30 10:17:00 2018) [136x29] (attached)
   
-[root@cs ~]# tmux rename -t wangshibo kevin
+[root@cs ~]# tmux rename -t t t1
   
 [root@cs ~]# tmux ls
-kevin: 1 windows (created Sun Sep 30 10:17:00 2018) [136x29] (attached)
+t1: 1 windows (created Sun Sep 30 10:17:00 2018) [136x29] (attached)
 ```
 
