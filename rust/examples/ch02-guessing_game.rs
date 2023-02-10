@@ -1,4 +1,3 @@
-use core::num;
 use rand::Rng;
 use std::cmp::Ordering;
 use std::io;

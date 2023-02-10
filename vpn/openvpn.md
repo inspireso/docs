@@ -15,42 +15,44 @@ yum install -y easy-rsa
 #groupadd openvpn
 #useradd -g openvpn -M -s /sbin/nologin openvpn
 
-mkdir /etc/openvpn/
+mkdir -p /etc/openvpn/
 cp -R /usr/share/easy-rsa/ /etc/openvpn/
-cp /usr/share/doc/openvpn-2.4.9/sample/sample-config-files/server.conf /etc/openvpn/
+cp /usr/share/doc/openvpn/sample/sample-config-files/server.conf /etc/openvpn/
 cp -r /usr/share/doc/easy-rsa/vars.example /etc/openvpn/easy-rsa/3/vars
 
 ```
 
 ## 服务器端配置
 
-### /etc/openvpn/server.conf
+### /etc/openvpn/server/server.conf
 
 ```sh
-cat <<EOF > /etc/openvpn/server.conf
+cat <<EOF > /etc/openvpn/server/jumper.conf
 port 8443
 proto udp
 dev tun
-ca /etc/openvpn/easy-rsa/3.0/pki/ca.crt
-cert /etc/openvpn/easy-rsa/3.0/pki/issued/server.crt
-key /etc/openvpn/easy-rsa/3.0/pki/private/server.key
-dh /etc/openvpn/easy-rsa/3.0/pki/dh.pem
-tls-auth /etc/openvpn/ta.key 0
+ca /etc/openvpn/easy-rsa/3/pki/ca.crt
+cert /etc/openvpn/easy-rsa/3/pki/issued/server.crt
+key /etc/openvpn/easy-rsa/3/pki/private/server.key
+dh /etc/openvpn/easy-rsa/3/pki/dh.pem
+tls-auth /etc/openvpn/easy-rsa/3/ta.key 0
+
 server 10.8.0.0 255.255.255.0
 ifconfig-pool-persist ipp.txt
 push "route 172.16.0.0 255.255.255.0"
+
 keepalive 10 120
 cipher AES-256-CBC
-duplicate-cn
+#duplicate-cn
 max-clients 100
 user openvpn
 group openvpn
 persist-key
 persist-tun
-txqueuelen 1000
-tun-mtu 1500
-txqueuelen 1000
-mssfix 1431
+# txqueuelen 1000
+# tun-mtu 1500
+# txqueuelen 1000
+# mssfix 1431
 #mssfix 0
 #tun-mtu 9000
 
@@ -59,24 +61,24 @@ log-append  openvpn.log
 verb 3
 explicit-exit-notify 1
 script-security 2
-up /etc/openvpn/up.sh
-down /etc/openvpn/down.sh
+up /etc/openvpn/server/up.sh
+down /etc/openvpn/server/down.sh
 EOF
 ```
 
 ```sh
-cat <<EOF > /etc/openvpn/up.sh
+cat <<EOF > /etc/openvpn/server/up.sh
 #!/bin/sh
 
-/usr/sbin/iptables -I FORWARD -o tun0 -j ACCEPT
+/usr/sbin/iptables -I FORWARD -o tun+ -j ACCEPT
 /usr/sbin/iptables -t nat -A POSTROUTING -s 10.8.0.0/24  -j MASQUERADE
 EOF
 ```
-chmod +x /etc/openvpn/up.sh
+chmod +x /etc/openvpn/server/up.sh
 
 
 ```sh
-cat <<EOF > /etc/openvpn/down.sh
+cat <<EOF > /etc/openvpn/server/down.sh
 #!/bin/sh
 
 /usr/sbin/iptables -D FORWARD -o tun0 -j ACCEPT
@@ -84,13 +86,13 @@ cat <<EOF > /etc/openvpn/down.sh
 EOF
 ```
 
-chmod +x /etc/openvpn/down.sh
+chmod +x /etc/openvpn/server/down.sh
 
 ### 日志归档
 
 ```sh
 cat <<EOF >  /etc/logrotate.d/openvpn
-/etc/openvpn/*.log
+/etc/openvpn/server/*.log
 {
     size    50M
     rotate  0
@@ -133,7 +135,7 @@ set_var EASYRSA_DIGEST          "sha256"
 
 ### 创建证书
 ```sh
-cd /etc/openvpn/easy-rsa/3.0
+cd /etc/openvpn/easy-rsa/3
 ./easyrsa init-pki
 
 ##创建CA证书
@@ -144,7 +146,6 @@ Common Name: OpenVPN CERTIFICATE AUTHORITY
 ## dh,ta
 ./easyrsa gen-dh
 openvpn --genkey --secret ta.key
-cp -r ta.key /etc/openvpn/
 
 #server
 ./easyrsa gen-req server nopass
@@ -193,24 +194,24 @@ sysctl -a | grep net.ipv4.conf.eno1.forwarding
 ### 分配用户
 
 ```sh
-cd /etc/openvpn/easy-rsa/3.0
+cd /etc/openvpn/easy-rsa/3
 
 ## 生成客户端证书
 ./easyrsa build-client-full user1 nopass
 
 ## 复制客户端说需要的文件
 mkdir -p /etc/openvpn/client
-cp /etc/openvpn/easy-rsa/3.0/pki/ca.crt /etc/openvpn/client/
-cp /etc/openvpn/ta.key /etc/openvpn/client/
-cp /etc/openvpn/easy-rsa/3.0/pki/issued/user1.crt /etc/openvpn/client/
-cp /etc/openvpn/easy-rsa/3.0/pki/private/user1.key /etc/openvpn/client/
+cp /etc/openvpn/easy-rsa/3/pki/ca.crt /etc/openvpn/client/
+cp /etc/openvpn/easy-rsa/3/ta.key /etc/openvpn/client/
+cp /etc/openvpn/easy-rsa/3/pki/issued/user1.crt /etc/openvpn/client/
+cp /etc/openvpn/easy-rsa/3/pki/private/user1.key /etc/openvpn/client/
 
 ```
 
 ### 启动
 
 ```sh
-systemctl enable openvpn@server && systemctl restart openvpn@server
+systemctl enable openvpn-server@jumper && systemctl restart openvpn-server@jumper
 ```
 
 
