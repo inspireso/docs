@@ -4,26 +4,39 @@
 
 ```sh
 
-cat <<EOF >  /etc/sysctl.d/80-net.conf
+cat <<EOF >  /etc/sysctl.d/90-nat.conf
 net.ipv6.conf.all.disable_ipv6=1
 net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
 
 net.ipv4.ip_forward=1
+#是否支持巨型帧转发（使用LVS做负载均衡器时建议此值为1）
+net.ipv4.ip_forward_use_pmtu = 1 
+net.ipv4.ip_no_pmtu_disc = 1
 net.ipv4.ip_local_port_range=1024 65535
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
 
-
+net.nf_conntrack_max = 4194304
 net.netfilter.nf_conntrack_max=4194304
 net.netfilter.nf_conntrack_buckets=65536
-#net.netfilter.nf_conntrack_tcp_timeout_time_wait = 60
 net.netfilter.nf_conntrack_icmp_timeout=10
-net.netfilter.nf_conntrack_tcp_timeout_syn_recv=5
-net.netfilter.nf_conntrack_tcp_timeout_syn_sent=5
-net.netfilter.nf_conntrack_tcp_timeout_established=600
-net.netfilter.nf_conntrack_tcp_timeout_fin_wait=15
-net.netfilter.nf_conntrack_tcp_timeout_time_wait=15
-net.netfilter.nf_conntrack_tcp_timeout_close_wait=15
-net.netfilter.nf_conntrack_tcp_timeout_last_ack=15
+# net.netfilter.nf_conntrack_tcp_timeout_syn_recv=5
+# net.netfilter.nf_conntrack_tcp_timeout_syn_sent=5
+# net.netfilter.nf_conntrack_tcp_timeout_established=600
+# net.netfilter.nf_conntrack_tcp_timeout_fin_wait=15
+# net.netfilter.nf_conntrack_tcp_timeout_time_wait=15
+# net.netfilter.nf_conntrack_tcp_timeout_close_wait=15
+# net.netfilter.nf_conntrack_tcp_timeout_last_ack=15
+# net.netfilter.nf_conntrack_udp_timeout_stream = 120
+
+net.netfilter.nf_conntrack_icmpv6_timeout = 30
+net.netfilter.nf_conntrack_log_invalid = 0
+net.netfilter.nf_conntrack_frag6_low_thresh = 3145728
+net.netfilter.nf_conntrack_frag6_timeout = 60
+net.netfilter.nf_conntrack_generic_timeout = 600
+net.netfilter.nf_conntrack_gre_timeout = 30
+net.netfilter.nf_conntrack_gre_timeout_stream = 180
 
 net.core.netdev_max_backlog = 3240000
 net.core.somaxconn = 65535
@@ -54,9 +67,9 @@ net.ipv4.tcp_max_tw_buckets=1048576
 net.ipv4.tcp_slow_start_after_idle=0
 
 # TIME_WAIT
-net.ipv4.tcp_tw_recycle=0
-net.ipv4.tcp_tw_reuse=1
-net.ipv4.tcp_timestamps=1
+# net.ipv4.tcp_tw_recycle=0
+# net.ipv4.tcp_tw_reuse=1
+net.ipv4.tcp_timestamps=0
 #表示当keepalive起用的时候，TCP发送keepalive消息的频度。默认 7200
 net.ipv4.tcp_keepalive_time = 60
 #keepalive探测包的发送间隔,默认 75
@@ -68,7 +81,7 @@ net.ipv4.tcp_fin_timeout = 30
 
 EOF
 
-sysctl -p /etc/sysctl.d/80-net.conf
+sysctl -p /etc/sysctl.d/90-nat.conf
 
 ```
 
