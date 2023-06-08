@@ -40,3 +40,8 @@ alias -s bz2='tar -xjvf'
 export TIME_STYLE='+%Y/%m/%d %H:%M:%S'
 ```
 
+## 启动和关机文件的处理顺序
+
+```sh
+.zshenv → .zprofile → .zshrc → .zlogin → .zlogout
+```

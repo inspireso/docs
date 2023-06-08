@@ -102,9 +102,21 @@ docker compose version
 
 ## LazyDocker
 
-```
+```sh
 docker run --rm -it -v /var/run/docker.sock:/var/run/docker.sock \
 -v ~/.config/lazydocker:/.config/jesseduffield/lazydocker \
 lazyteam/lazydocker
 ```
 
+## FAQ
+
+```sh
+&0: stdin
+&1: stdout
+&2: stderr
+# 输出日志到指定文件,包括错误信息
+docker logs xxx &> build.log
+
+# 输出日志到指定文件,包括错误信息, 同时直接查看
+docker logs xxx 2>&1 | tee xxx.log
+```
