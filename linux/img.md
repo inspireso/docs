@@ -1,7 +1,13 @@
-1、	解压 
-xz -dkv -T0 hiveos-0.6-208-stable@210818.img.xz
+# 定制镜像
 
-6、	压缩img
+## xz
+###	解压 
+```sh
+xz -dkv -T0 hiveos-0.6-208-stable@210818.img.xz
+```
+
+###	压缩img
+```sh
 xz -zkv -T0 hiveos-0.6-208-stable@210818.img
 
 fdisk -lu hiveos-0.6-217-stable@220423.img
@@ -17,16 +23,17 @@ mount -o loop,offset=1048576 hiveos-0.6-211-stable@220509.img /tmp/hiveos/hive-c
 mkdir ./rootfs
 mount -o loop,offset=65011712 hiveos-0.6-217-stable@220423.img /tmp/hiveos/rootfs
 
-mount -o loop,offset=65011712 hiveos-0.6-211-stable@211104.img /tmp/hiveos/rootfs
+mount -o loop,offset=65011712 'hiveos-0.6-217-stable@220509.img' /tmp/hiveos/rootfs
 
 
 losetup -f -P hiveos-0.6-217-stable@220423.img
 lsblk -f
 mkfs.fat /dev/loop7p1
 fatlabel /dev/loop7p1 HIVE
+```
 
-
-# 修改 ntfs -> fat 分区
+## 修改 ntfs -> fat 分区
+```sh
 sed -i 's/ntfs-3g/vfat/g' etc/fstab
 sed -i 's/remove_hiberfile,nofail/nodiratime,utf8,nofail/g' etc/fstab
 
@@ -34,14 +41,18 @@ LABEL=HIVE /hive-config vfat  errors=remount-ro,fmask=0133,dmask=0022,utf8,noati
 
 run/blkid/blkid.tab
 <device DEVNO="0x0811" TIME="1560509137.300704" LABEL="HIVE" UUID="1194-C919" TYPE="vfat" PARTLABEL="HIVE" PARTUUID="03661d4c-e4f0-460f-9521-b8131e40507b">/dev/sdb1</device>
+```
 
-# 添加 tmate2+hssh2
+## 添加 tmate2+hssh2
+````sh
 cp -vf /home/ubuntu/Home/Downloads/hiveos/component/tmate2 hive/bin/
 chmod +x hive/bin/tmate2
 cp -vf /home/ubuntu/Home/Downloads/hiveos/component/hssh2 hive/bin/
 chmod +x hive/bin/hssh2
+```
 
-# 精简
+## 精简
+```sh
 rm -rvf etc/syclib etc/rc.local \
  root/.ssh/authorized_keys \
  home/user/.ssh/authorized_keys
@@ -62,17 +73,21 @@ rm -rvf  K01shellinabox
 
 chattr +i etc/crontab \
   hive/etc/crontab.root \
+```
 
-
-
-# 启动ufw
+## 启动ufw
+```sh
 sed -i 's/^ENABLED=no/ENABLED=yes/g' etc/ufw/ufw.conf
+```
 
-# "dns ..."
+## "dns ..."
+```sh
 ln -sf ../run/systemd/resolve/resolv.conf etc/resolv.conf
 sed -i 's/^#DNSStubListener=yes/DNSStubListener=no/g' etc/systemd/resolved.conf
+```
 
-# 替换源
+## 替换源
+```sh
 rm -vf etc/apt/sources.list.d/openvpn-aptrepo.list
 mv -vnf etc/apt/sources.list.d/hiverepo.list etc/apt/sources.list.d/hiverepo.list.bak 
 
@@ -111,3 +126,4 @@ NAME="XCloud"
 BUILD="beta"
 BUILD_DATE="2022-05-10"
 EOF
+```

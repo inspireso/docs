@@ -1,11 +1,12 @@
 # nginx
+
 ## 环境
 
 - OS: centos7
 
-## 编译/安装tengine/打包
+## 编译/安装 tengine/打包
 
- ```sh
+```sh
 # 安装编译工具
 mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
 curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
@@ -27,19 +28,19 @@ $ tar xzf tengine-2.2.2.tar.gz
 $ cd tengine-2.2.2
 $ ./configure  \
 	--user=nginx \
-  	--group=nginx \
-  	--pid-path=/var/run/nginx.pid \
-  	--lock-path=/var/run/nginx.lock \
-  	--http-client-body-temp-path=/var/cache/nginx/client_temp \
-  	--http-proxy-temp-path=/var/cache/nginx/proxy_temp \
-    --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
-    --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
-    --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
-    --with-http_v2_module \
-    --with-openssl=/usr/src/openssl-1.1.1-pre6 \
-    --with-jemalloc=/usr/src/jemalloc-5.1.0
-    
-    
+ 	--group=nginx \
+ 	--pid-path=/var/run/nginx.pid \
+ 	--lock-path=/var/run/nginx.lock \
+ 	--http-client-body-temp-path=/var/cache/nginx/client_temp \
+ 	--http-proxy-temp-path=/var/cache/nginx/proxy_temp \
+   --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
+   --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
+   --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
+   --with-http_v2_module \
+   --with-openssl=/usr/src/openssl-1.1.1-pre6 \
+   --with-jemalloc=/usr/src/jemalloc-5.1.0
+
+
 $ make & make install
 $ ln -s /usr/local/nginx/sbin/nginx /usr/local/sbin/nginx
 $ cat <<EOF > /usr/lib/systemd/system/nginx.service
@@ -64,12 +65,12 @@ EOF
 
 # 打包
 $ tar -czvf tengine-2.2.2-centos7.tar.gz /usr/local/nginx /usr/local/sbin/nginx /usr/lib/systemd/system/nginx.service
- ```
+```
 
 ## 直接安装
 
 ```sh
-$ curl -vL -o --insecure tengine-2.2.2-centos7.tar.gz  "https://github.com/inspireso/docs/blob/master/resources/tengine-2.2.2-centos7.tar.gz" 
+$ curl -vL -o --insecure tengine-2.2.2-centos7.tar.gz  "https://github.com/inspireso/docs/blob/master/resources/tengine-2.2.2-centos7.tar.gz"
 $ tar xzf tengine-2.2.2-centos7.tar.gz -C /
 #添加nginx用户和用户组
 $ useradd -d /var/cache/nginx -s /sbin/nologin -U nginx
@@ -129,7 +130,7 @@ Max realtime priority     0                    0
 Max realtime timeout      unlimited            unlimited            us
 ```
 
-### linux内核参数
+### linux 内核参数
 
 ```sh
 #表示进程（例如一个worker进程）可能同时打开的最大句柄数，直接限制最大并发连接数
@@ -186,7 +187,7 @@ cat /proc/sys/fs/file-nr
 ls /proc/pid/fd | wc -l
 
 #或者，需要安装yum install -y lsof
-lsof -p pid | wc -l 
+lsof -p pid | wc -l
 
 #查看nginx当前的打开文件数
 lsof -i:80
@@ -226,3 +227,32 @@ if ($is_mobile = 0) {
 
 ```
 
+## 统计 access
+
+```sh
+# log_format main '$remote_addr $host [$time_local] $status "$request" $request_length $body_bytes_sent $request_time $upstream_response_time "$http_referer" "$http_user_agent"';
+
+#统计每小时 url 的访问次数
+awk '{gsub(/[\[\]]/,"",$3);split($3,a,"[: ]");printf("%s %s\n",a[1]":"a[2],$7)}' access.log |  sort | uniq -c| sort -rnk3 | less
+
+#统计每小时的访问次数
+awk '{gsub(/[\[\]]/,"",$3);split($3,a,"[: ]");printf("%s\n",a[1]":"a[2])}' access.log |  sort | uniq -c| sort -rnk3 | less
+
+#统计每分钟的访问次数
+awk '{gsub(/[\[\]]/,"",$3);
+printf("%s\n",a[1]":"a[2]":"a[3])}' access.log |  sort | uniq -c| sort -rnk3 | less
+
+#根据状态码统计
+awk '{print $12}' access.log | sort | uniq -c | sort -nr
+
+#统计状态码为502的url
+awk '$5=502 {print $5, $7}' access.log | sort | uniq -c | sort -nr
+
+#按照访问URL和响应时间统计
+awk '$12!="-" {split($7,a,"?"); printf("%s %s %s\n", $5, $12, a[1])}' access.log |sort -k 2 |uniq -c -f 2| sort -rnk3|less
+
+#统计Ip,URL
+starttime=$(date -d "2023-05-26 08:00:00" +%s)
+endtime=$(date -d "2023-055-26 12:00:00" +%s)q
+awk '$4>=starttime && $4<=endtime {print $1, $7}' access.log | sort | uniq -c | sort -nr
+```
