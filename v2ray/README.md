@@ -6,7 +6,7 @@
 
 ```sh
 mkdir -p /usr/local/v2ray && cd /usr/local/v2ray
-wget https://github.com/v2fly/v2ray-core/releases/download/v5.3.0/v2ray-linux-64.zip
+wget https://github.com/v2fly/v2ray-core/releases/download/v5.7.0/v2ray-linux-64.zip
 unzip v2ray-linux-64.zip
 
 
