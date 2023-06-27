@@ -11,21 +11,21 @@
 mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
 curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
 curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
-yum install -y gcc make libc-devel  openssl-devel pcre-devel zlib-devel jemalloc-devel bzip2
+yum install -y gcc make libc-devel  openssl-devel pcre-devel zlib-devel jemalloc-devel bzip2 perl
 
 #下载源代码
 $ cd /usr/src/
-$ curl --insecure -L -o jemalloc-5.1.0.tar.bz2 https://github.com/jemalloc/jemalloc/releases/download/5.1.0/jemalloc-5.1.0.tar.bz2
-$ tar xjf jemalloc-5.1.0.tar.bz2
+$ curl --insecure -L -o jemalloc-5.3.0.tar.bz2 https://github.com/jemalloc/jemalloc/releases/download/5.3.0/jemalloc-5.3.0.tar.bz2
+$ tar xjf jemalloc-5.3.0.tar.bz2
 
 $ cd /usr/src/
-$ curl --insecure -L -o openssl-1.1.1-pre6.tar.gz  https://www.openssl.org/source/openssl-1.1.1-pre6.tar.gz
-$ tar xzf openssl-1.1.1-pre6.tar.gz
+$ curl --insecure -L -o openssl-1.1.1u.tar.gz  https://www.openssl.org/source/openssl-1.1.1u.tar.gz
+$ tar xzf openssl-1.1.1u.tar.gz
 
 $ cd /usr/src/
-$ curl --insecure -L -o tengine-2.2.2.tar.gz http://tengine.taobao.org/download/tengine-2.2.2.tar.gz
-$ tar xzf tengine-2.2.2.tar.gz
-$ cd tengine-2.2.2
+$ curl --insecure -L -o tengine-2.3.3.tar.gz http://tengine.taobao.org/download/tengine-2.3.3.tar.gz
+$ tar xzf tengine-2.3.3.tar.gz
+$ cd tengine-2.3.3
 $ ./configure  \
 	--user=nginx \
  	--group=nginx \
@@ -33,12 +33,45 @@ $ ./configure  \
  	--lock-path=/var/run/nginx.lock \
  	--http-client-body-temp-path=/var/cache/nginx/client_temp \
  	--http-proxy-temp-path=/var/cache/nginx/proxy_temp \
-   --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
-   --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
-   --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
-   --with-http_v2_module \
-   --with-openssl=/usr/src/openssl-1.1.1-pre6 \
-   --with-jemalloc=/usr/src/jemalloc-5.1.0
+  --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
+  --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
+  --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
+  --with-threads                     \
+  --with-file-aio                    \
+  --with-http_ssl_module             \
+  --with-http_v2_module              \
+  --with-http_realip_module          \
+  --with-http_addition_module        \
+  --with-http_sub_module             \
+  --with-http_dav_module             \
+  --with-http_flv_module             \
+  --with-http_mp4_module             \
+  --with-http_gunzip_module          \
+  --with-http_gzip_static_module     \
+  --with-http_auth_request_module    \
+  --with-http_random_index_module    \
+  --with-http_secure_link_module     \
+  --with-http_degradation_module     \
+  --with-http_slice_module           \
+  --with-http_stub_status_module     \
+  --with-mail --with-mail_ssl_module \
+  --with-stream --with-stream_realip_module --with-stream_ssl_module --with-stream_ssl_preread_module --with-stream_sni \
+  --with-openssl=/usr/src/openssl-1.1.1u \
+  --with-jemalloc=/usr/src/jemalloc-5.3.0 \
+  --add-module=./modules/ngx_http_concat_module \
+  --add-module=./modules/ngx_http_footer_filter_module \
+  --add-module=./modules/ngx_http_reqstat_module \
+  --add-module=./modules/ngx_http_sysguard_module \
+  --add-module=./modules/ngx_http_trim_filter_module \
+  --add-module=./modules/ngx_http_upstream_check_module \
+  --add-module=./modules/ngx_http_upstream_consistent_hash_module \
+  --add-module=./modules/ngx_http_upstream_dynamic_module \
+  --add-module=./modules/ngx_http_upstream_dyups_module \
+  --add-module=./modules/ngx_http_upstream_session_sticky_module \
+  --add-module=./modules/ngx_http_proxy_connect_module \
+  --add-module=./modules/ngx_http_user_agent_module \
+  --add-module=./modules/ngx_slab_stat \
+  --with-debug
 
 
 $ make & make install
@@ -57,6 +90,7 @@ ExecStartPre=/usr/local/nginx/sbin/nginx -t -c /usr/local/nginx/conf/nginx.conf
 ExecStart=/usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
 ExecReload=/bin/kill -s HUP $MAINPID
 ExecStop=/bin/kill -s QUIT $MAINPID
+LimitNOFILE=65535
 
 [Install]
 WantedBy=multi-user.target
@@ -64,14 +98,14 @@ WantedBy=multi-user.target
 EOF
 
 # 打包
-$ tar -czvf tengine-2.2.2-centos7.tar.gz /usr/local/nginx /usr/local/sbin/nginx /usr/lib/systemd/system/nginx.service
+$ tar -czvf tengine-2.3.3-centos7.tar.gz /usr/local/nginx /usr/local/sbin/nginx /usr/lib/systemd/system/nginx.service
 ```
 
 ## 直接安装
 
 ```sh
-$ curl -vL -o --insecure tengine-2.2.2-centos7.tar.gz  "https://github.com/inspireso/docs/blob/master/resources/tengine-2.2.2-centos7.tar.gz"
-$ tar xzf tengine-2.2.2-centos7.tar.gz -C /
+$ curl -o tengine-2.3.3-centos7.tar.gz  "https://raw.githubusercontent.com/inspireso/docs/dev/resources/tengine-2.3.3-centos7.tar.gz"
+$ tar xzf tengine-2.3.3-centos7.tar.gz -C /
 #添加nginx用户和用户组
 $ useradd -d /var/cache/nginx -s /sbin/nologin -U nginx
 # 系统自动启动
