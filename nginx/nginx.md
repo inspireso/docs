@@ -11,7 +11,7 @@
 mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
 curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
 curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
-yum install -y gcc make libc-devel  openssl-devel pcre-devel zlib-devel jemalloc-devel bzip2 perl
+yum install -y gcc make libc-devel  openssl-devel pcre-devel zlib-devel jemalloc-devel bzip2 libtext-template-perl
 
 #下载源代码
 $ cd /usr/src/
