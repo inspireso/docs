@@ -1,0 +1,4 @@
+{
+    "rocketMQClusterName": "DefaultCluster",
+    "maxMessageGroupSize": 0
+}
