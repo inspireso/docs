@@ -1,0 +1,18 @@
+[project]
+name = "python-example"
+version = "0.0.1"
+description = ""
+authors = [
+    {name = "enoch",email = "lanxenet@gmail.com"},
+]
+dependencies = [
+    "selenium>=4.14.0",
+    "onnxruntime>=1.16.1",
+    "pillow>=10.1.0",
+    "numpy>=1.25.2",
+    "atomic>=0.7.3",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
