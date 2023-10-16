@@ -10,8 +10,12 @@
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
+      // "sudo": true,
+      "gevent": true,
       "env": {
         "DEBUG": "True",
+        "GEVENT_SUPPORT": "True",
+        "PYTHONASYNCIODEBUG": "1"
       }
     }
   ]
