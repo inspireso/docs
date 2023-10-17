@@ -4,22 +4,25 @@ services:
     image: selenium/standalone-chrome:4.13
     shm_size: 2gb
     networks:
-      - selenium
+      - sel
     ports:
       - "4444:4444"
       - "7900:7900"
+    restart: always
   robot:
-    image: registry.cn-hangzhou.aliyuncs.com/base_containers/selenium:ocr-0.1.3
+    image: registry.cn-hangzhou.aliyuncs.com/base_containers/selenium:ocr-0.2.1
     depends_on:
       - chrome  
     networks:
-      - selenium
+      - sel
     environment:
       - WEB_DRIVER_URL=http://chrome:4444/wd/hub
+      - VOTES=10000
+    restart: always
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: always
 
 networks:
-  selenium:
+  sel:
