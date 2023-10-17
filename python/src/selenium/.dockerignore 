@@ -1,5 +1,6 @@
 __pycache__/
 grid/
-docker-compose.yml
+*.yml
+*.yaml
 *_test.py
 test.py

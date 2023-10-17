@@ -16,26 +16,47 @@ mock_url = os.getenv(
 
 # 获取 webdriver 的地址
 executor = os.getenv("WEB_DRIVER_URL")
+if executor is not None:
+    print(f'###command_executor: {executor}')
+else:
+    print('###use local webdriver')
+
 # 获取投票数量
 votes_string = os.getenv("VOTES", "10000")
 votes = int(votes_string) if votes_string.isdigit() else 10
-
-if executor is not None:
-    print(f'###command_executor: {executor}')
 print(f'###votes: {votes}')
+
+implicitly_wait_second_str = os.getenv("IMPLICITLY_WAIT_SECOND", "1")
+time_to_wait = (
+    int(implicitly_wait_second_str) if implicitly_wait_second_str.isdigit() else 1
+)
+
 
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
 chrome_options.add_argument('--disable-blink-features=AutomationControlled')
 
+edge_options = webdriver.EdgeOptions()
+edge_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+edge_options.add_argument('--disable-blink-features=AutomationControlled')
+
+firefox_options = webdriver.FirefoxOptions()
+# firefox_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+# firefox_options.add_argument('--disable-blink-features=AutomationControlled')
+
 driver_factorys = [
-    # lambda: webdriver.Remote(command_executor=executor, options=webdriver.FirefoxOptions()),
-    # lambda: webdriver.Remote(command_executor=executor, options=webdriver.EdgeOptions()),
+    # chrome
     lambda: webdriver.Chrome(options=chrome_options)
     if executor is None
     else webdriver.Remote(command_executor=executor, options=chrome_options),
-    # lambda: webdriver.Edge(options=webdriver.EdgeOptions()),
-    # lambda: webdriver.Firefox(options=webdriver.FirefoxOptions()),
+    # edge
+    # lambda: webdriver.Edge(options=edge_options)
+    # if executor is None
+    # else webdriver.Remote(command_executor=executor, options=edge_options),
+    # firefox
+    # lambda: webdriver.Firefox(options=firefox_options)
+    # if executor is None
+    # else webdriver.Remote(command_executor=executor, options=firefox_options),
 ]
 
 import threading
@@ -96,9 +117,9 @@ def mock_nc(driver: WebDriver, div: WebElement):
     # # 第三步：释放鼠标
     # action.release()
     # # 执行动作
-    # action.perform()
+    # action.perform()·
 
-    sleep_seconds = lambda: random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
+    sleep_seconds = lambda: random.choice([0.1, 0.2, 0.3])
 
     # div = driver.find_element(by=By.ID, value="nc_1_n1z")
     ActionChains(driver).click_and_hold(on_element=div).perform()
@@ -127,23 +148,29 @@ def run(driver: WebDriver) -> bool:
     """
 
     retry_times = 0
-    print('-------------')
+
     driver.get(mock_url)
     # 隐式等待
-    driver.implicitly_wait(3)
+    driver.implicitly_wait(time_to_wait)
 
     # 先等待复选框加载
     checkboxs = driver.find_elements(by=By.CLASS_NAME, value="van-checkbox")
 
     if len(checkboxs) == 0:
         try:
-            nc = driver.find_element(by=By.ID, value="nc_1_n1z")
+            nc = driver.find_elements(by=By.ID, value="nc_1_n1z")
+            if len(nc) == 0:
+                print('没有找到滑块验证')
+                print('-------------')
+                print(driver.page_source)
+                return False
             # 模拟拖动滑块，避开滑块验证
-            mock_nc(driver, nc)
-            print('模拟滑块验证成功')
+            mock_nc(driver, nc[0])
+            print('>>>模拟滑块验证成功')
         except Exception as e:
             print(e)
 
+    print('-------------')
     while len(checkboxs) == 0 and retry_times < 3:
         print('等待复选框加载...')
         driver.refresh()
@@ -183,7 +210,7 @@ def run(driver: WebDriver) -> bool:
     if len(code) == 0:
         return False
 
-    print(F'验证码：{code}')
+    print(f'验证码：{code}')
 
     input = driver.find_element(by=By.NAME, value="randomCode")
     input.send_keys(code)
@@ -198,10 +225,6 @@ def run(driver: WebDriver) -> bool:
     submit = submits[0]
     submit.click()
     thanks = driver.find_elements(by=By.CLASS_NAME, value="thanks")
-    if len(thanks) == 0:
-        print('等待成功返回...')
-        time.sleep(1)
-        thanks = driver.find_elements(by=By.CLASS_NAME, value="thanks")
     if len(thanks) > 0:
         counter.effected_increment()
         print(f'成功投 {counter.effected_count} 票')

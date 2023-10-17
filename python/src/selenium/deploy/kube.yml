@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: selenium
+  labels:
+    app: selenium
+spec:
+  serviceName: selenium
+  replicas: 1
+  selector:
+    matchLabels:
+      app: selenium
+  template:
+    metadata:
+      labels:
+        app: selenium  
+    spec:
+      containers:
+        - name: chrome
+          image: selenium/standalone-chrome:4.13
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 7900
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 2000m
+              memory: 2Gi
+        - name: sel
+          image: registry.cn-hangzhou.aliyuncs.com/base_containers/selenium:ocr-0.2.3
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: WEB_DRIVER_URL
+              value: http://localhost:4444/wd/hub
+            - name: VOTES
+              value: "10000"
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 2000m
+              memory: 2Gi
