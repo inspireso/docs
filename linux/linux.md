@@ -1,4 +1,4 @@
-# linux 
+# linux
 
 ## 修改为阿里镜像库
 
@@ -47,11 +47,11 @@ cat /proc/net/sockstat
 ss -axp | awk '{print $9}' |awk '{split($0,a,",");print a[2]}' | awk '{split($0,a,"=");print a[2]}'|sort|uniq -c |sort|less
 
 #统计
-lsof | wc -l 
-lsof -n |awk '{print $2}'|sort|uniq -c |sort -nr|more 
+lsof | wc -l
+lsof -n |awk '{print $2}'|sort|uniq -c |sort -nr|more
 
 #或者，需要安装yum install -y lsof
-lsof -p pid | wc -l 
+lsof -p pid | wc -l
 
 ```
 
@@ -64,8 +64,6 @@ ps auxwwf > ps.txt
 
 docker ps | grep <容器ID前缀>
 ```
-
-
 
 ### 查看打开的文件个数限制
 
@@ -102,7 +100,7 @@ LimitCORE=infinity
 
 ### nmcli：管理工具
 
-#### 查看nmcli使用说明
+#### 查看 nmcli 使用说明
 
 ```sh
 [root@rehl7 ~]# nmcli help
@@ -147,7 +145,7 @@ nmcli con show
 # 删除有线连接
 nmcli con del UUID
 # 创建新的连接
-nmcli con add type ethernet con-name eno2 ifname eno2 
+nmcli con add type ethernet con-name eno2 ifname eno2
 # 使用nmcli命令操作，创建team接口team0，同时设置teaming模式为roundrobin
 nmcli con add type team con-name team0 ifname team0 config '{"runner":{"name": "roundrobin"}}'
 #给接口team0设置ip地址
@@ -164,7 +162,7 @@ nmcli con mod eno2 +ipv4.address '192.168.8.159/24'
 nmcli con reload && nmcli con up eno2
 ```
 
-#### 配置teamd
+#### 配置 teamd
 
 ```sh
 sudo apt install libteam-utils
@@ -193,10 +191,10 @@ nmcli con show
 nmcli con reload && sudo nmcli con up team0
 # nmcli con up team0
 # 查看team0的状态就出现了
-teamdctl team0 st 
+teamdctl team0 st
 ```
 
-- 配置bond
+- 配置 bond
 
 ```sh
 modinfo bonding | head -n 3
@@ -231,18 +229,16 @@ nmcli con add type bond-slave con-name bond0-port3 ifname eno3 master bond0
 nmcli con reload && nmcli con up bond0
 ```
 
-  
-
 ### ip
 
 ```sh
-ip [ OPTIONS ] OBJECT { COMMAND | help }  
+ip [ OPTIONS ] OBJECT { COMMAND | help }
 OBJECT 和 COMMAND可以简写到一个字母
 ip help    　　　　　可以查到OBJECT列表和OPTIONS，简写 ip h
 ip <OBJECT> help　　　查看针对该OBJECT的帮助，比如 ip addr help，简写 ip a h
 ip addr    　　　　　查看网络接口地址，简写 ip a
 
-#查看网络接口地址，替代ifconfig： 
+#查看网络接口地址，替代ifconfig：
 ip addr
 # 网络接口统计信息
 ip -s link
@@ -270,8 +266,6 @@ ss -antp
 ss -antp|column -t
 ```
 
-
-
 ### iperf: 带宽测试
 
 ```sh
@@ -290,7 +284,7 @@ TCP window size: 8.00 KByte (default)
 iperf -c 10.230.48.65 -i 2
 
 #以Mbytes/sec为单位显示测试结果：
-iperf -c 10.230.48.65  
+iperf -c 10.230.48.65
 
 #设置TCP传输窗口大小为300K
 iperf -s -w 300K
@@ -317,79 +311,75 @@ iperf -c 172.16.2.159 -u -b 200M -i2 -t 60
 
 ```
 
-> -s 以server模式启动，eg：iperf –s 。Server端为数据的接收端。 
+> -s 以 server 模式启动，eg：iperf –s 。Server 端为数据的接收端。
 >
-> -D 以服务方式运行ipserf，eg：iperf -s -D 
+> -D 以服务方式运行 ipserf，eg：iperf -s -D
 >
-> -R 停止iperf服务，针对-D，eg：iperf -s -R 
+> -R 停止 iperf 服务，针对-D，eg：iperf -s -R
 >
-> -o <filename> 重定向输出到指定文件。 
+> -o <filename> 重定向输出到指定文件。
 >
-> -c,--client <hostname/IP> 如果Iperf运行为服务器模式，则可利用-c参数指定一个客户端，本机将接受指定客户端的连接，但不支持UDP协议。 
+> -c,--client <hostname/IP> 如果 Iperf 运行为服务器模式，则可利用-c 参数指定一个客户端，本机将接受指定客户端的连接，但不支持 UDP 协议。
 >
-> -P,--parallel #  设置Iperf服务模式下的最大连接数，默认值为0，表示不限制连接数量。 
+> -P,--parallel #  设置 Iperf 服务模式下的最大连接数，默认值为 0，表示不限制连接数量。
 >
-> Iperf客户端选项 
+> Iperf 客户端选项
 >
-> -b,--bandwidth 指定客户端通过UDP协议发送信息的带宽，默认值为1Mbit/s 
+> -b,--bandwidth 指定客户端通过 UDP 协议发送信息的带宽，默认值为 1Mbit/s
 >
-> -c,--client <hostname/IP> 指定Iperf服务器的主机名和IP地址　　
+> -c,--client <hostname/IP> 指定 Iperf 服务器的主机名和 IP 地址
 >
-> -d,--dualtest 同时进行双向传输测试 
+> -d,--dualtest 同时进行双向传输测试
 >
-> -n,--num 指定传输的字节数，eg：iperf -c 222.35.11.23 -n 100000 
+> -n,--num 指定传输的字节数，eg：iperf -c 222.35.11.23 -n 100000
 >
-> -r,--tradeoff 单独进行双向传输测试 
+> -r,--tradeoff 单独进行双向传输测试
 >
-> -t,--time 指定Iperf测试时间，默认10秒,eg：iperf -c 222.35.11.23 -t 5 
+> -t,--time 指定 Iperf 测试时间，默认 10 秒,eg：iperf -c 222.35.11.23 -t 5
 >
-> -L,--listenport 指定一个端口，服务器将利用这个端口与客户机连接 
+> -L,--listenport 指定一个端口，服务器将利用这个端口与客户机连接
 >
-> -P, --parallel 设置Iperf客户端至Iperf服务器的连接数，默认值为1 
+> -P, --parallel 设置 Iperf 客户端至 Iperf 服务器的连接数，默认值为 1
 >
-> -S, --tos  设置发出包的类型，具体类型请参阅man文档 
+> -S, --tos  设置发出包的类型，具体类型请参阅 man 文档
 >
-> -F 指定需要传输的文件 
+> -F 指定需要传输的文件
 >
-> -T 指定ttl值 
+> -T 指定 ttl 值
 >
 > 通用参数：
 >
-> -f [kmKM] 分别表示以Kbits, Mbits, KBytes, MBytes显示报告，默认以Mbits为单位,eg：iperf -c 222.35.11.23 -f K 
+> -f [kmKM] 分别表示以 Kbits, Mbits, KBytes, MBytes 显示报告，默认以 Mbits 为单位,eg：iperf -c 222.35.11.23 -f K
 >
-> -i sec 以秒为单位显示报告间隔，eg：iperf -c 222.35.11.23 -i 2 
+> -i sec 以秒为单位显示报告间隔，eg：iperf -c 222.35.11.23 -i 2
 >
-> -l 缓冲区大小，默认是8KB,eg：iperf -c 222.35.11.23 -l 16 
+> -l 缓冲区大小，默认是 8KB,eg：iperf -c 222.35.11.23 -l 16
 >
-> -m 显示tcp最大mtu 
+> -m 显示 tcp 最大 mtu
 >
-> -o 将报告和错误信息输出到文件eg：iperf -c 222.35.11.23 -o ciperflog.txt 
+> -o 将报告和错误信息输出到文件 eg：iperf -c 222.35.11.23 -o ciperflog.txt
 >
-> -p 指定服务器端使用的端口或客户端所连接的端口eg：iperf -s -p 9999;iperf -c 222.35.11.23 -p 9999 
+> -p 指定服务器端使用的端口或客户端所连接的端口 eg：iperf -s -p 9999;iperf -c 222.35.11.23 -p 9999
 >
-> -u 使用udp协议 
+> -u 使用 udp 协议
 >
-> -w 指定TCP窗口大小，默认是8KB 
+> -w 指定 TCP 窗口大小，默认是 8KB
 >
-> -B 绑定一个主机地址或接口(当主机有多个地址或接口时使用该参数) 
+> -B 绑定一个主机地址或接口(当主机有多个地址或接口时使用该参数)
 >
-> -C 兼容旧版本(当server端和client端版本不一样时使用) 
+> -C 兼容旧版本(当 server 端和 client 端版本不一样时使用)
 >
-> -M 设定TCP数据包的最大mtu值 
+> -M 设定 TCP 数据包的最大 mtu 值
 >
-> -N 设定TCP不延时 
+> -N 设定 TCP 不延时
 >
-> -V 传输ipv6数据包 
-
-
+> -V 传输 ipv6 数据包
 
 ## blkid
 
 ```
 echo `blkid /dev/vdb | awk '{print $2}' | sed 's/\"//g'` /data ext4 defaults 0 0 >> /etc/fstab
 ```
-
-
 
 ## ifstat
 
@@ -416,8 +406,6 @@ team0             169071 0        188158 0       277902K 0        14949K 0
                        0 0             0 0             0 0             0 0
 ```
 
-
-
 ## glances（实时监控）
 
 ```sh
@@ -437,8 +425,6 @@ alias glances='docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro -
 EOF
 
 ```
-
-
 
 ## iftop
 
@@ -528,13 +514,11 @@ yum install bash-completion
 echo "export TIME_STYLE='+%Y/%m/%d %H:%M:%S'" >> ~/.bash_profile
 ```
 
-
-
 ## ssh
 
 ```sh
 #生成公钥密钥
-ssh-keygen -t rsa 
+ssh-keygen -t rsa
 
 chmod 700 ~/.ssh
 chmod 600 ~/.ssh/authorized_keys
@@ -551,7 +535,7 @@ ssh -Cg -L 8081:172.16.0.1:80 root@remote-ip
 
 ```
 
-##  selinux
+## selinux
 
 ```sh
 永久方法 – 需要重启服务器
@@ -566,10 +550,10 @@ setenforce 0
 
 ```sh
 #sudoers 文件添加可写权限
-chmod -v u+w /etc/sudoers 
+chmod -v u+w /etc/sudoers
 #取消 sudoers 文件可写权限
-chmod -v u-w /etc/sudoers 
-#修改密码 
+chmod -v u-w /etc/sudoers
+#修改密码
 
 passwd <UserName>
 #新建用户
@@ -605,33 +589,33 @@ du -h  --max-depth=1 /data
 ## dd/fio
 
 ```sh
-#随机读： 
+#随机读：
 fio -filename=/dev/sdb -direct=1 -iodepth 1 -thread -rw=randread -ioengine=psync -bs=16k -size=10G -numjobs=10 -runtime=1000 -group_reporting -name=randread
 
-#顺序读： 
+#顺序读：
 fio -filename=/dev/sdb1 -direct=1 -iodepth 1 -thread -rw=read -ioengine=psync -bs=16k -size=200G -numjobs=30 -runtime=1000 -group_reporting -name=read
 
-#随机写： 
+#随机写：
 fio -filename=/dev/sdb1 -direct=1 -iodepth 1 -thread -rw=randwrite -ioengine=psync -bs=16k -size=200G -numjobs=30 -runtime=1000 -group_reporting -name=randwrite
 
-#顺序写： 
+#顺序写：
 fio -filename=/dev/sdb1 -direct=1 -iodepth 1 -thread -rw=write -ioengine=psync -bs=16k -size=200G -numjobs=30 -runtime=1000 -group_reporting -name=write
 
-#混合随机读写： 
+#混合随机读写：
 fio -filename=/dev/sdb1 -direct=1 -iodepth 1 -thread -rw=randrw -rwmixread=70 -ioengine=psync -bs=16k -size=1G -numjobs=10 -runtime=100 -group_reporting -name=randrw -ioscheduler=noop
 
-说明： 
-filename=/dev/sdb1       测试文件名称，通常选择需要测试的盘的data目录。 
-direct=1                 测试过程绕过机器自带的buffer。使测试结果更真实。 
-rw=randwrite             测试随机写的I/O 
-rw=randrw                测试随机写和读的I/O 
-bs=16k                   单次io的块文件大小为16k 
-bsrange=512-2048         同上，提定数据块的大小范围 
-size=5g                  本次的测试文件大小为5g，以每次4k的io进行测试。 
-numjobs=30               本次的测试线程为30. 
-runtime=1000             测试时间为1000秒，如果不写则一直将5g文件分4k每次写完为止。 
-ioengine=psync           io引擎使用pync方式 
-rwmixwrite=30            在混合读写的模式下，写占30% 
+说明：
+filename=/dev/sdb1       测试文件名称，通常选择需要测试的盘的data目录。
+direct=1                 测试过程绕过机器自带的buffer。使测试结果更真实。
+rw=randwrite             测试随机写的I/O
+rw=randrw                测试随机写和读的I/O
+bs=16k                   单次io的块文件大小为16k
+bsrange=512-2048         同上，提定数据块的大小范围
+size=5g                  本次的测试文件大小为5g，以每次4k的io进行测试。
+numjobs=30               本次的测试线程为30.
+runtime=1000             测试时间为1000秒，如果不写则一直将5g文件分4k每次写完为止。
+ioengine=psync           io引擎使用pync方式
+rwmixwrite=30            在混合读写的模式下，写占30%
 group_reporting          关于显示结果的，汇总每个进程的信息。
 
 ## dd
@@ -643,8 +627,6 @@ sudo dd if=/dev/nvme0n1 bs=10M  conv=sync,noerror | pv -s 120G |sudo dd of=/dev/
 sudo pv -tpreb /dev/nvme0n1 | dd of=/dev/zero bs=10M conv=notrunc,noerror
 ```
 
-
-
 ## tar
 
 ```sh
@@ -654,13 +636,11 @@ tar -czvf 文件名.tar.gz 目录1 [目录1 目录2 文件1 文件2]
 tar -xzf tengine-2.2.0-centos7.tar.gz -C /
 
 #打包并压缩成bzip2
-tar -cjf 文件名.tar.bz2 *.jpg 
+tar -cjf 文件名.tar.bz2 *.jpg
 #解压
-tar -xjf 文件名.tar.bz2 
+tar -xjf 文件名.tar.bz2
 
 ```
-
-
 
 ## 快速复制
 
@@ -683,13 +663,11 @@ fg %1
 
 ```
 
- ### rsync
+### rsync
 
 ```sh
 rsync -auvzP --remove-source-files  chia@chia-003:/data/farm/*/*.plot /data/farm/sdc/
 ```
-
-
 
 ## RPM
 
@@ -704,8 +682,6 @@ rpm [options] xxx.rpm
 -e：删除包
 ```
 
-
-
 ## dnsmasq
 
 ### 安装
@@ -715,25 +691,21 @@ yum install -y dnsmasq
 systemctl enable dnsmasq && systemctl start dnsmasq
 ```
 
-
-
-### 配置（/etc/dnsmasq.conf ） 
+### 配置（/etc/dnsmasq.conf ）
 
 ```properties
-resolv-file=/etc/dnsmasq.resolv.conf 
-addn-hosts=/etc/dnsmasq.hosts 
+resolv-file=/etc/dnsmasq.resolv.conf
+addn-hosts=/etc/dnsmasq.hosts
 ```
 
 ### 注意
 
-- dns主机的hosts最好都清空只保留127.0.0.1
-- 做好dns的备机
-- 机器hosts优先级是最高的（相对内部dns）
-- redhat的dns主机启动/usr/local/sbin/dnsmasq -h 则不会加载本地hosts。
+- dns 主机的 hosts 最好都清空只保留 127.0.0.1
+- 做好 dns 的备机
+- 机器 hosts 优先级是最高的（相对内部 dns）
+- redhat 的 dns 主机启动/usr/local/sbin/dnsmasq -h 则不会加载本地 hosts。
 
-
-
-## 升级linux内核
+## 升级 linux 内核
 
 ```sh
 rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org \
@@ -770,9 +742,9 @@ yum -y install cifs-utils
 
 vi /etc/cifs.conf
 username=sharefs
-password=SUNisco2018
+password=xxxx
 domain=workgroup
-mount -t cifs //192.168.8.191/data /data/shipagency -o credentials='/etc/cifs.conf',cache=none
+mount -t cifs //xxx.xxx.xxx/data /data -o credentials='/etc/cifs.conf',cache=none
 ```
 
 ## NFS
@@ -837,7 +809,7 @@ daily 指定转储周期为每天
 weekly 指定转储周期为每周
 monthly 指定转储周期为每月
 rotate count 指定日志文件删除之前转储的次数，0 指没有备份，5 指保留 5 个备份
-tabootext [+] list 让 logrotate 不转储指定扩展名的文件，缺省的扩展名是：.rpm-orig, .rpmsave, v, 和 ~ 
+tabootext [+] list 让 logrotate 不转储指定扩展名的文件，缺省的扩展名是：.rpm-orig, .rpmsave, v, 和 ~
 size size 当日志文件到达指定的大小时才转储，Size 可以指定 bytes (缺省) 以及 KB (sizek) 或者 MB(sizem)
 ```
 
@@ -858,8 +830,6 @@ penssl genrsa -out kubelet-key.pem 2048
 openssl req -new -key kubelet-key.pem -out kubelet.csr -subj "/CN=kubelet-key" -config worker-openssl.cnf
 openssl x509 -req -in kubelet.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out kubelet.pem -days 365 -extensions v3_req -extfile worker-openssl.cnf -rsa256
 ```
-
-
 
 ## cfssl
 
@@ -909,26 +879,26 @@ cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kube
 ```sh
 vi ~/.bashrc
 #alias rm='rm -i'
-alias rm=trash        
-alias rl='ls ~/.Trash'  
+alias rm=trash
+alias rl='ls ~/.Trash'
 alias ur=undelfile
 
 if [ ! -d ~/.Trash/ ]; then
         mkdir ~/.Trash
 fi
 
-undelfile()  
-{  
-  mv -i ~/.Trash/$@ ./  
-}  
-trash()  
-{  
-  mv $@ ~/.Trash/  
+undelfile()
+{
+  mv -i ~/.Trash/$@ ./
 }
-cleartrash()  
-{  
-    read -p "Clear trash?[n]" confirm  
-    [ $confirm == 'y' ] || [ $confirm == 'Y' ]  && /usr/bin/rm -rf ~/.Trash/*  
+trash()
+{
+  mv $@ ~/.Trash/
+}
+cleartrash()
+{
+    read -p "Clear trash?[n]" confirm
+    [ $confirm == 'y' ] || [ $confirm == 'Y' ]  && /usr/bin/rm -rf ~/.Trash/*
 }
 
 source ~/.bashrc
@@ -1013,7 +983,7 @@ iptables -nvL -t nat
 
 ```sh
 yum -y install ntp
- 
+
 vi /etc/ntp.conf
 
 driftfile  /var/lib/ntp/drift
@@ -1033,15 +1003,11 @@ systemctl start ntpd
 
 ```
 
-
-
 ## TLS/SSL
 
 ```sh
 sort -u /proc/crypto | grep module | grep aes
 ```
-
-
 
 ## update-alternatives
 
@@ -1049,7 +1015,13 @@ sort -u /proc/crypto | grep module | grep aes
 sudo update-alternatives --config editor
 ```
 
+## 扩容硬盘
 
+```sh
+type growpart || yum install -y cloud-utils-growpart
+LC_ALL=en_US.UTF-8 growpart /dev/sda 1
+resize2fs /dev/sda1
+```
 
 ## FAQ
 
@@ -1062,6 +1034,3 @@ df -i
 find /tmp | wc -l
 #删除对应的小文件
 ```
-
-
-
