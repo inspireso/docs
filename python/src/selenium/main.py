@@ -11,7 +11,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 # 指定投票页面
 mock_url = os.getenv(
     'MOCK_URL',
-    'https://m.xm.celoan.cn/Service/businessFill?redirect=%252FService%252FbusinessEnvironment&id=3',
+    'https://domain/your/mock/url',
 )
 
 # 获取 webdriver 的地址
@@ -26,9 +26,9 @@ votes_string = os.getenv("VOTES", "10000")
 votes = int(votes_string) if votes_string.isdigit() else 10
 print(f'###votes: {votes}')
 
-implicitly_wait_second_str = os.getenv("IMPLICITLY_WAIT_SECOND", "1")
+implicitly_wait_second_str = os.getenv("IMPLICITLY_WAIT_SECOND", "3")
 time_to_wait = (
-    int(implicitly_wait_second_str) if implicitly_wait_second_str.isdigit() else 1
+    int(implicitly_wait_second_str) if implicitly_wait_second_str.isdigit() else 3
 )
 
 
@@ -171,6 +171,7 @@ def run(driver: WebDriver) -> bool:
             print(e)
 
     print('-------------')
+    checkboxs = driver.find_elements(by=By.CLASS_NAME, value="van-checkbox")
     while len(checkboxs) == 0 and retry_times < 3:
         print('等待复选框加载...')
         driver.refresh()
@@ -179,6 +180,7 @@ def run(driver: WebDriver) -> bool:
         retry_times += 1
 
     if len(checkboxs) == 0:
+        print(driver.page_source)
         return True
 
     checkboxs = checkboxs[::-1]
@@ -277,7 +279,7 @@ class ThreadDriver(threading.Thread):
                 if run(driver):
                     driver.quit()
                     driver = self.factory()
-                time.sleep(1)
+                time.sleep(0.7)
         finally:
             driver.quit()
 

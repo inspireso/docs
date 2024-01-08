@@ -56,9 +56,6 @@ Environment="AUTOSSH_GATETIME=0"
 User=autossh
 Type=simple
 ExecStart=/usr/bin/autossh -M 0 -NL localIp:localPort:remoteIp:remotePort usernamme@example.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o BatchMode=yes -o StrictHostKeyChecking=no -i SSH_KEY_FILE_PATH
-ExecStop=/bin/kill $MAINPID
-ExecReload=/bin/kill -HUP $MAINPID 
-KillMode=process 
 Restart=always
 
 [Install]
@@ -72,7 +69,7 @@ EOF
 
 ```sh
 
-ssh -R localIp:localPort:remoteIp:remotePort usernamme@example.com
+ssh -R remoteIp:remotePort:localIp:localPort usernamme@example.com
 
 #autossh.service
 cat > /etc/systemd/system/autossh.service <<EOF
@@ -85,10 +82,7 @@ After=network.target network-online.target ssh.service
 Environment="AUTOSSH_GATETIME=0"
 User=autossh
 Type=simple
-ExecStart=/usr/bin/autossh -M 0 -NR localIp:localPort:remoteIp:remotePort usernamme@example.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o BatchMode=yes -o StrictHostKeyChecking=no -i SSH_KEY_FILE_PATH
-ExecStop=/bin/kill $MAINPID
-ExecReload=/bin/kill -HUP $MAINPID 
-KillMode=process 
+ExecStart=/usr/bin/autossh -M 0 -NR remoteIp:remotePort:localIp:localPort usernamme@example.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o BatchMode=yes -o StrictHostKeyChecking=no -i SSH_KEY_FILE_PATH
 Restart=always
 
 [Install]

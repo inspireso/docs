@@ -4,14 +4,13 @@
 
 import requests
 
-headers = {'PRIVATE-TOKEN': '7XwHcLhgUmsiwyE8FdY9'}
+gitlab_url = "https://gitlab.com/api/v4"
+headers = {'PRIVATE-TOKEN': 'your_token'}
 
 
 def get_repositories_by_project(id):
     res = requests.get(
-        url="https://git.uutaka.com/api/v4/projects/{}/registry/repositories".format(
-            id
-        ),
+        url=f"{gitlab_url}/projects/{id}/registry/repositories",
         headers=headers,
     )
     return res.json()
@@ -19,9 +18,7 @@ def get_repositories_by_project(id):
 
 def get_repositories_by_group(id):
     res = requests.get(
-        url="https://git.uutaka.com/api/v4/groups/{}/registry/repositories?tags=1&tags_count=true".format(
-            id
-        ),
+        url=f"{gitlab_url}/groups/{id}/registry/repositories?tags=1&tags_count=true",
         headers=headers,
     )
     return res.json()
@@ -29,9 +26,7 @@ def get_repositories_by_group(id):
 
 def del_repositories(project_id, id):
     res = requests.delete(
-        url="https://git.uutaka.com/api/v4//projects/{}/registry/repositories/{}".format(
-            project_id, id
-        ),
+        url=f"{gitlab_url}/projects/{project_id}/registry/repositories/{id}",
         headers=headers,
     )
     print(res.json())

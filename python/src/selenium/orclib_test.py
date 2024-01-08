@@ -7,7 +7,6 @@ import os
 
 from ocrlib import OcrByOnnx
 
-
 def test():
     ocr = OcrByOnnx()
 
