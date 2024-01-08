@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  server:
+    network_mode: host
+    restart: unless-stopped
+    privileged: true
+    image: rancher/rancher:v2.8-head
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/localtime:/etc/localtime

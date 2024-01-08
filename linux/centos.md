@@ -25,6 +25,8 @@ net.ipv6.conf.lo.disable_ipv6=1
 EOF
 sysctl -p
 systemctl restart network
+
+systemctl stop firewalld && sudo systemctl disable firewalld && yum remove -y firewalld
 ```
 
 ## 配置阿里云镜像
