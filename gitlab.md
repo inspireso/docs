@@ -80,7 +80,7 @@ git push --set-upstream origin master
 ```sh
 #!/bin/bash
 
-EXCLUDE_FROM_GC=('registry.uutaka.com/docker/ci-tools:latest' 'registry.uutaka.com/docker/docker-maven/maven:3.5-jdk-8')
+EXCLUDE_FROM_GC=('registry.your-gitlab.com/docker/ci-tools:latest' 'registry.your-gitlab.com/docker/docker-maven/maven:3.5-jdk-8')
 
 # Remove all the dangling images
 docker rmi $(docker images -qf "dangling=true")
