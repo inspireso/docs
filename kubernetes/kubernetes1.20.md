@@ -155,12 +155,12 @@ debug: true
 EOF
 
 #安装kubeadm kubectl kubelet
-curl https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | apt-key add -
+curl https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | apt-key add - 
 cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
 deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main
 EOF
 
-apt update && apt install -y kubelet=1.21.3-00 kubeadm=1.21.3-00 kubectl=1.21.3-00
+apt update && apt install -y kubelet=1.21.14-00 kubectl=1.21.14-00 kubeadm=1.21.14-00
 
 swapoff -a
 
