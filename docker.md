@@ -65,11 +65,6 @@ cat <<EOF >  /etc/docker/daemon.json
     "max-size": "100m",
     "max-file": "5"
   },
-  "storage-driver": "overlay2",
-  "storage-opts": [
-    "overlay2.override_kernel_check=true"
-  ],
-  "selinux-enabled": false,
   "registry-mirrors": ["https://k4azpinc.mirror.aliyuncs.com"],
   "bip": "10.16.0.1/16"
 }
