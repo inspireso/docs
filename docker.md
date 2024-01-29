@@ -84,16 +84,6 @@ sysctl -p
 sudo systemctl restart docker
 ```
 
-## docker-compose
-
-```sh
-sudo yum update
-
-sudo yum install -y docker-compose-plugin
-
-docker compose version
-```
-
 ## LazyDocker
 
 ```sh
