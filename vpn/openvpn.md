@@ -160,29 +160,50 @@ Common Name: openvpn
 
 ```sh
 cat <<EOF >  /etc/security/limits.d/nofile.conf
-root soft nofile 65535
-root hard nofile 65535
-* soft nofile 65535
-* hard nofile 65535
+*   soft    nproc         2067554
+*   hard    nproc         2067554
 EOF
 
-cat <<EOF >  /etc/sysctl.d/99-net.conf
+cat <<EOF >  /etc/sysctl.conf
 net.ipv6.conf.all.disable_ipv6=1
 net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
-
-vm.swappiness=0
-net.ipv4.tcp_tw_reuse = 1
-net.ipv4.tcp_fin_timeout = 30
-net.ipv4.tcp_max_tw_buckets = 5000
-net.ipv4.ip_local_port_range = 1024　　61000
-net.ipv4.tcp_keepalive_time = 600
-
-net.ipv4.tcp_slow_start_after_idle=0
-net.ipv4.tcp_wmem=4096 12582912 16777216
 net.ipv4.ip_forward=1
-net.ipv4.tcp_max_syn_backlog=8096
-net.ipv4.tcp_rmem=4096 12582912 16777216
+
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.ip_local_port_range = 1024 65535
+net.core.netdev_max_backlog = 3240000
+net.core.somaxconn = 65535
+
+net.core.rmem_default=16777216
+net.core.wmem_default=16777216
+net.core.optmem_max=16777216
+net.core.rmem_max=16777216
+net.core.wmem_max=16777216
+net.ipv4.tcp_mem=16777216 16777216 16777216
+net.ipv4.tcp_wmem=4096 87380 16777216
+net.ipv4.tcp_rmem=4096 87380 16777216
+
+net.ipv4.tcp_syncookies = 0
+net.ipv4.tcp_max_syn_backlog = 3240000
+net.ipv4.tcp_max_tw_buckets = 1440000
+
+# We would decrease the default values for tcp_keepalive_* params as follow:
+net.ipv4.tcp_keepalive_time = 600  # default 7200
+net.ipv4.tcp_keepalive_intvl = 10  # default 75
+net.ipv4.tcp_keepalive_probes = 9  # default 9
+net.ipv4.tcp_fin_timeout = 7
+
+net.ipv4.tcp_syn_retries=3
+net.ipv4.tcp_synack_retries=3
+net.ipv4.tcp_orphan_retries=3
+net.ipv4.tcp_retries2 = 8
+
+# Avoid falling back to slow start after a connection goes idle.
+net.ipv4.tcp_slow_start_after_idle = 0
+
+# Disable caching of TCP congestion state
+net.ipv4.tcp_no_metrics_save = 1
 EOF
 
 sysctl -p
@@ -235,7 +256,6 @@ keepalive 10 120
 > 注意:  dev, proto,verb,mute配置项和服务器端相同
 
 
-
 ### 日志归档
 
 ```sh
@@ -253,8 +273,6 @@ cat <<EOF >  /etc/logrotate.d/openvpn
 }
 EOF
 ```
-
-
 
 ## FAQ
 
@@ -302,40 +320,55 @@ dmesg -Lew
 
 ### sysctl
 
-```
+```sh
 cat <<EOF >  /etc/security/limits.d/nofile.conf
-root soft nofile 65535
-root hard nofile 65535
-* soft nofile 65535
-* hard nofile 65535
+*   soft    nproc         2067554
+*   hard    nproc         2067554
 EOF
 
-cat <<"EOF" > /usr/lib/systemd/system/openvpn@.service.d/limit.conf
-[Service]
-LimitNOFILE=65535
-EOF
-
-cat <<EOF >  /etc/sysctl.d/99-net.conf
+cat <<EOF >>  /etc/sysctl.conf
 net.ipv6.conf.all.disable_ipv6=1
 net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
-
-vm.swappiness=0
-net.ipv4.tcp_tw_reuse = 1
-net.ipv4.tcp_fin_timeout = 30
-net.ipv4.tcp_max_tw_buckets = 5000
-net.ipv4.ip_local_port_range = 1024　　61000
-net.ipv4.tcp_keepalive_time = 600
-
-net.ipv4.tcp_slow_start_after_idle=0
-net.ipv4.tcp_wmem=4096 12582912 16777216
 net.ipv4.ip_forward=1
-net.ipv4.tcp_max_syn_backlog=8096
-net.ipv4.tcp_rmem=4096 12582912 16777216
 
-net.netfilter.nf_conntrack_max = 4194304
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.ip_local_port_range = 1024 65535
+net.core.netdev_max_backlog = 3240000
+net.core.somaxconn = 65535
+
+net.core.rmem_default=16777216
+net.core.wmem_default=16777216
+net.core.optmem_max=16777216
+net.core.rmem_max=16777216
+net.core.wmem_max=16777216
+net.ipv4.tcp_mem=16777216 16777216 16777216
+net.ipv4.tcp_wmem=4096 87380 16777216
+net.ipv4.tcp_rmem=4096 87380 16777216
+
+net.ipv4.tcp_syncookies = 0
+net.ipv4.tcp_max_syn_backlog = 3240000
+net.ipv4.tcp_max_tw_buckets = 1440000
+
+# We would decrease the default values for tcp_keepalive_* params as follow:
+net.ipv4.tcp_keepalive_time = 600  # default 7200
+net.ipv4.tcp_keepalive_intvl = 10  # default 75
+net.ipv4.tcp_keepalive_probes = 9  # default 9
+net.ipv4.tcp_fin_timeout = 7
+
+net.ipv4.tcp_syn_retries=3
+net.ipv4.tcp_synack_retries=3
+net.ipv4.tcp_orphan_retries=3
+net.ipv4.tcp_retries2 = 8
+
+# Avoid falling back to slow start after a connection goes idle.
+net.ipv4.tcp_slow_start_after_idle = 0
+
+# Disable caching of TCP congestion state
+net.ipv4.tcp_no_metrics_save = 1
 EOF
-```
+
+sysctl -p
 
 
 ### 生成客户端证书错误
