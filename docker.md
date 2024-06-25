@@ -65,7 +65,12 @@ cat <<EOF >  /etc/docker/daemon.json
     "max-size": "100m",
     "max-file": "5"
   },
-  "registry-mirrors": ["https://k4azpinc.mirror.aliyuncs.com"],
+  "registry-mirrors" : [
+    "https:\/\/docker.m.daocloud.io",
+    "https:\/\/dockerproxy.com",
+    "https:\/\/docker.mirrors.ustc.edu.cn",
+    "https:\/\/docker.nju.edu.cn"
+  ],
   "bip": "10.16.0.1/16"
 }
 EOF

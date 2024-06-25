@@ -21,6 +21,25 @@ brew tap homebrew/autoupdate --custom-remote git@github.com:Homebrew/homebrew-au
 
 ```
 
+## install from aliyun
+
+```sh
+xcode-select --install
+git clone https://mirrors.aliyun.com/homebrew/install.git brew-install
+/bin/bash brew-install/install.sh
+rm -rf brew-install
+brew -v
+
+# 临时替换
+export HOMEBREW_INSTALL_FROM_API=1
+export HOMEBREW_API_DOMAIN="https://mirrors.aliyun.com/homebrew-bottles/api"
+export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/brew.git"
+export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/homebrew-core.git"
+export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.aliyun.com/homebrew/homebrew-bottles"
+brew update
+
+```
+
 ### backup && restore
 
 ```sh

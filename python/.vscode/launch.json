@@ -6,16 +6,14 @@
   "configurations": [
     {
       "name": "Python: Current File",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
-      // "sudo": true,
-      "gevent": true,
       "env": {
         "DEBUG": "True",
-        "GEVENT_SUPPORT": "True",
-        "PYTHONASYNCIODEBUG": "1"
+        "PYTHONASYNCIODEBUG": "1",
+        "PYTHONPATH": "${workspaceFolder:python}"
       }
     }
   ]
