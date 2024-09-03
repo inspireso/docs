@@ -84,6 +84,9 @@ User=autossh
 Type=simple
 ExecStart=/usr/bin/autossh -M 0 -NR remoteIp:remotePort:localIp:localPort usernamme@example.com -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o BatchMode=yes -o StrictHostKeyChecking=no -i SSH_KEY_FILE_PATH
 Restart=always
+ExecStop=/bin/kill
+ExecReload=/bin/kill -HUP
+KillMode=process
 
 [Install]
 WantedBy=multi-user.target
