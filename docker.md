@@ -66,10 +66,10 @@ cat <<EOF >  /etc/docker/daemon.json
     "max-file": "5"
   },
   "registry-mirrors" : [
-    "https:\/\/docker.m.daocloud.io",
-    "https:\/\/dockerproxy.com",
-    "https:\/\/docker.mirrors.ustc.edu.cn",
-    "https:\/\/docker.nju.edu.cn"
+    "https://docker.m.daocloud.io",
+    "https://dockerproxy.com",
+    "https://docker.mirrors.ustc.edu.cn",
+    "https://docker.nju.edu.cn"
   ],
   "bip": "10.16.0.1/16"
 }
