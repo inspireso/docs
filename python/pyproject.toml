@@ -6,13 +6,38 @@ authors = [
     {name = "enoch",email = "lanxenet@gmail.com"},
 ]
 dependencies = [
-    "selenium>=4.14.0",
-    "onnxruntime>=1.16.1",
-    "pillow>=10.1.0",
-    "numpy>=1.25.2",
-    "atomic>=0.7.3",
+    "tabula-py>=2.10.0",
+    "jpype1>=1.5.0",
+    "openpyxl>=3.1.5",
+    "tabula>=1.0.5",
+    "pdfplumber>=0.11.4",
+    "pandas>=2.2.3",
+    "pytesseract>=0.3.13",
+    "pillow>=11.0.0",
 ]
-requires-python = ">=3.11"
+requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}
 
+[tool.pdm]
+distribution = false
+[dependency-groups]
+dev = [
+    "black>=24.8.0",
+    "pytest-asyncio>=0.24.0",
+]
+[tool.pytest.ini_options]
+addopts = "-v -s"
+asyncio_mode = "auto"
+log_cli = true
+log_level = "NOTSET"
+testpaths = [
+    "tests",
+    "**/*_test.py",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+    "tests.py",
+    "test.py",
+]
