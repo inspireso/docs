@@ -1,10 +1,12 @@
 
-#autossh
+# autossh
 
 ## install
 
 ```ssh
 yum install autossh
+
+or
 
 apt install autossh
 ```
