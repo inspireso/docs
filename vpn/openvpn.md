@@ -208,7 +208,7 @@ EOF
 
 sysctl -p
 
-sysctl -a | grep net.ipv4.conf.eth0.forwarding 
+sysctl -a | grep net.ipv4.conf.eth0.forwarding
 sysctl -a | grep net.ipv4.conf.eno1.forwarding
 ```
 
@@ -243,7 +243,7 @@ systemctl enable openvpn-server@jumper && systemctl restart openvpn-server@jumpe
 client
 dev tun
 proto udp
-remote <ip> 8443  
+remote <ip> 8443
 resolv-retry infinite
 nobind
 persist-key
@@ -293,7 +293,7 @@ iptables -nL -t mangle
 iptables -nL -t nat
 
 # 检查所有网卡的forwarding=1
-sysctl -a | grep net.ipv4.conf.eth0.forwarding 
+sysctl -a | grep net.ipv4.conf.eth0.forwarding
 
 # 跟踪 iptables
 #centos6
@@ -388,6 +388,18 @@ cd /etc/openvpn/easy-rsa/3.0
 
 ## 生成CRL文件(撤销证书的列表)
 ./easyrsa gen-crl
+
+systemctl restart openvpn@server
+
+
+### 服务端证书过期
+
+```sh
+cd /etc/openvpn/easy-rsa/3.0
+
+## 续签 renew
+./easyrsa renew server nopass
+pass phrase: 输入之前 ca 的密码
 
 systemctl restart openvpn@server
 
