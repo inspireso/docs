@@ -1,11 +1,10 @@
-version: '3'
 services:
   rabbitmq:
     restart: always
     image: rabbitmq:3.13-management
     environment:
     - RABBITMQ_DEFAULT_USER=admin
-    - RABBITMQ_DEFAULT_PASS=CHANGE_ME_PASSWORD
+    - RABBITMQ_DEFAULT_PASS=admin@2025
     ports:
     - "5672:5672"
     - "15672:15672"
