@@ -9,17 +9,58 @@ Claude Code 是 Anthropic 官方推出的终端 AI 编程助手，支持代码�
 ### 前置要求
 
 - [Node.js](https://nodejs.org/zh-cn/download/) 18+
-- Windows 需安装 [Git for Windows](https://git-scm.com/download/win)
-- 全局依赖（用于 statusline 等）：`jq`、`bc`
+
+#### Windows
+
+- 安装 [Git for Windows](https://git-scm.com/download/win)
+- 安装依赖（用于 statusline 等）：
+  - [jq](https://stedolan.github.io/jq/download/)（JSON 处理）
+  - [bc](https://gnuwin32.sourceforge.net/packages/bc.htm)（计算器）
+
+#### Linux/macOS
+
+- 安装依赖（用于 statusline 等）：
+  ```bash
+  # macOS
+  brew install jq bc
+  
+  # Ubuntu/Debian
+  sudo apt install jq bc
+  
+  # CentOS/RHEL
+  sudo yum install jq bc
+  ```
 
 ### 安装 Claude Code
 
+#### Windows
+
+```powershell
+# PowerShell
+npm install -g @anthropic-ai/claude-code
+
+# 验证安装
+claude --version
+```
+
+#### Linux/macOS
+
 ```bash
 npm install -g @anthropic-ai/claude-code
-claude --version  # 验证安装
+
+# 验证安装
+claude --version
 ```
 
 ### 更新
+
+#### Windows
+
+```powershell
+npm update -g @anthropic-ai/claude-code
+```
+
+#### Linux/macOS
 
 ```bash
 npm update -g @anthropic-ai/claude-code
@@ -29,26 +70,23 @@ npm update -g @anthropic-ai/claude-code
 
 ## 配置国内模型
 
-Claude Code 本身使用 Anthropic API，但可以通过环境变量接入兼容 Anthropic API 的国内模型服务，如 DeepSeek。
+Claude Code 支持接入兼容 Anthropic API 的国内模型服务，在配置文件中设置 `env` 字段即可。
 
-### 方式一：环境变量（推荐）
+> **重要：** 使用国内模型前，需在配置文件中设置 `"hasCompletedOnboarding": true` 以跳过 Anthropic 认证引导。
 
-```bash
-export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
-export ANTHROPIC_AUTH_TOKEN=<你的 DeepSeek API Key>
-export ANTHROPIC_MODEL=deepseek-v4-pro[1m]
-export ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro[1m]
-export ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro[1m]
-export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash
-export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash
-export CLAUDE_CODE_EFFORT_LEVEL=max
-```
+### 配置文件位置
 
-可将上述内容加入 `~/.zshrc` 或 `~/.bashrc`。
+| 操作系统 | 配置文件路径 |
+|---------|-------------|
+| Windows | `%USERPROFILE%\.claude\settings.json` |
+| Linux/macOS | `~/.claude/settings.json` |
 
-### 方式二：settings.json（全局配置）
+| 操作系统 | 用户配置路径 |
+|---------|-------------|
+| Windows | `%USERPROFILE%\.claude.json` |
+| Linux/macOS | `~/.claude.json` |
 
-在 `~/.claude/settings.json` 中配置 `env` 字段：
+### DeepSeek 配置样例
 
 ```json
 {
@@ -56,24 +94,25 @@ export CLAUDE_CODE_EFFORT_LEVEL=max
     "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro[1m]",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro[1m]",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-flash",
-    "CLAUDE_CODE_EFFORT_LEVEL": "max"
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
   }
 }
 ```
 
-> **重要：** 使用国内模型时，还需在 `~/.claude.json` 中设置 `"hasCompletedOnboarding": true` 以跳过 Anthropic 官认证流程的引导页面。否则 Claude Code 会尝试引导用户完成 Anthropic 登录，无法直接使用第三方模型。
->
-> ```json
-> {
->   "hasCompletedOnboarding": true
-> }
-> ```
+### 阿里云 CodingPlan 配置样例
 
-### 环境变量说明
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://coding.dashscope.aliyuncs.com/apps/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "sk-sp-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "ANTHROPIC_MODEL": "glm-5",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  }
+}
+```
+
+### 必要配置说明
 
 | 变量 | 说明 |
 |------|------|
@@ -85,69 +124,61 @@ export CLAUDE_CODE_EFFORT_LEVEL=max
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | 替代 Haiku（快速轻量任务） |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | 子代理模型（简单任务、并行搜索可走此模型） |
 | `CLAUDE_CODE_EFFORT_LEVEL` | 推理力度，`max` 为最高 |
-
-> 若使用其他兼容 Anthropic API 的模型服务，仅需修改 `ANTHROPIC_BASE_URL` 和 `ANTHROPIC_AUTH_TOKEN` 即可。
+| `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | 禁用非必要网络请求（国内模型必设为 `1`） |
 
 ### 启动
+
+#### Windows
+
+```powershell
+# PowerShell
+cd C:\path\to\my-project
+claude
+```
+
+#### Linux/macOS
 
 ```bash
 cd /path/to/my-project
 claude
 ```
 
-> 参考：[DeepSeek API Docs](https://api-docs.deepseek.com/zh-cn/guides/coding_agents)
-
 ---
 
 ## 插件
 
-Claude Code 支持通过插件扩展能力。插件在 `~/.claude/plugins/` 目录下。
+Claude Code 支持通过插件扩展能力。
 
-### 安装插件
+### 安装 superpowers（官方思考与流程层）
 
 ```bash
-# 安装 superpowers 插件（官方思考与流程层）
 claude plugin install superpowers@claude-plugins-official
-
-# 安装 context7 插件（文档查询）
-claude plugin install context7@claude-plugins-official
-
-# 查看已安装插件
-claude plugin list
-
-# 更新插件
-claude plugin update superpowers@claude-plugins-official
 ```
 
-### 启用/禁用插件
+### 安装 ai-engineering（AI 工程化实践）
 
 ```bash
-# 启用插件
-claude plugin enable superpowers@claude-plugins-official
+# 1. 注册 marketplace
+claude plugin marketplace add https://github.com/inspireso/ai-engineering.git
 
-# 禁用插件（不卸载）
-claude plugin disable superpowers@claude-plugins-official
-
-# 卸载插件
-claude plugin uninstall superpowers@claude-plugins-official
+# 2. 安装插件
+claude plugin install ai-engineering@inspireso-marketplace
 ```
 
-### 配置文件
+### 更新插件
 
-在 `~/.claude/settings.json` 中配置已启用的插件：
+```bash
+# 更新所有已安装插件
+claude plugin update
 
-```json
-{
-  "enabledPlugins": {
-    "context7@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true
-  }
-}
+# 更新指定插件
+claude plugin update superpowers
+claude plugin update ai-engineering
 ```
 
-### superpowers 插件功能
+### 插件功能说明
 
-superpowers 提供思考与流程层的能力：
+**superpowers** — 思考与流程层：
 
 | Skill | 说明 |
 |-------|------|
@@ -159,7 +190,18 @@ superpowers 提供思考与流程层的能力：
 | `verification` | 验证实现正确性 |
 | `code-review` | 代码审查 |
 
-调用方式：`/brainstorming`、`/plan`、`/TDD` 等斜杠命令，或让 Claude 自动判断何时使用。
+**ai-engineering** — AI 工程化实践：
+
+| Skill | 说明 |
+|-------|------|
+| `review` | PR 代码审查 |
+| `qa` | QA 测试流程 |
+| `release` | 发布流程 |
+| `tdd-feature` | TDD 功能实现 |
+| `refactor-analysis` | 重构影响分析 |
+| `doc-gen` | 文档生成 |
+
+调用方式：`/brainstorming`、`/review`、`/qa` 等斜杠命令，或让 Claude 自动判断何时使用。
 
 ---
 
