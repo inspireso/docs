@@ -59,6 +59,7 @@ EASY_RSA_DIR=/etc/openvpn/easy-rsa/3
 OVPN_CLIENT_DIR=/etc/openvpn/client
 OVPN_TPL="$OVPN_CLIENT_DIR/client.ovpn.tpl"
 PASSWORD_FILE="$OVPN_CLIENT_DIR/passwords.txt"
+BACKUP_DIR="$OVPN_CLIENT_DIR/backup"
 
 if [ ! -f "$OVPN_TPL" ]; then
   echo "Error: Template file not found: $OVPN_TPL"
@@ -93,6 +94,11 @@ if [ -z "$CA_PASSWORD" ]; then
   exit 1
 fi
 
+# 创建备份目录
+BACKUP_TIME=$(date +%Y%m%d_%H%M%S)
+mkdir -p "$BACKUP_DIR/$BACKUP_TIME"
+echo "备份目录: $BACKUP_DIR/$BACKUP_TIME"
+
 # 初始化密码记录
 echo "# Rebuilt at $(date)" >> "$PASSWORD_FILE"
 
@@ -116,17 +122,32 @@ for OVPN_USER in $USERS; do
     unset EASYRSA_BATCH EASYRSA_PASSIN
   fi
 
-  # 2. 删除旧证书文件
+  # 2. 备份旧证书文件
+  echo "  备份旧证书..."
+  if [ -f "./pki/issued/$OVPN_USER.crt" ]; then
+    cp "./pki/issued/$OVPN_USER.crt" "$BACKUP_DIR/$BACKUP_TIME/$OVPN_USER.crt"
+  fi
+  if [ -f "./pki/private/$OVPN_USER.key" ]; then
+    cp "./pki/private/$OVPN_USER.key" "$BACKUP_DIR/$BACKUP_TIME/$OVPN_USER.key"
+  fi
+  if [ -f "./pki/reqs/$OVPN_USER.req" ]; then
+    cp "./pki/reqs/$OVPN_USER.req" "$BACKUP_DIR/$BACKUP_TIME/$OVPN_USER.req"
+  fi
+  if [ -f "$OVPN_CONF" ]; then
+    cp "$OVPN_CONF" "$BACKUP_DIR/$BACKUP_TIME/$OVPN_USER.ovpn"
+  fi
+
+  # 3. 删除旧证书文件
   rm -f "./pki/issued/$OVPN_USER.crt"
   rm -f "./pki/private/$OVPN_USER.key"
   rm -f "./pki/reqs/$OVPN_USER.req"
   rm -f "$OVPN_CONF"
 
-  # 3. 生成新密码：用户名@随机8位
+  # 4. 生成新密码：用户名@随机8位
   RANDOM_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 8)
   USER_PASSWORD="$OVPN_USER@$RANDOM_PASS"
 
-  # 4. 生成新证书（带密码）
+  # 5. 生成新证书（带密码）
   echo "  生成新证书..."
   export EASYRSA_BATCH=yes
   export EASYRSA_PASSIN="pass:$CA_PASSWORD"
@@ -150,7 +171,7 @@ for OVPN_USER in $USERS; do
     continue
   fi
 
-  # 5. 生成配置文件
+  # 6. 生成配置文件
   echo "  创建配置文件..."
   cp "$OVPN_TPL" "$OVPN_CONF"
 
@@ -162,7 +183,7 @@ for OVPN_USER in $USERS; do
   cat "./pki/private/$OVPN_USER.key" >> "$OVPN_CONF"
   echo '</key>' >> "$OVPN_CONF"
 
-  # 6. 记录密码
+  # 7. 记录密码
   echo "$OVPN_USER  $USER_PASSWORD" >> "$PASSWORD_FILE"
 
   REBUILD_LIST="$REBUILD_LIST $OVPN_USER"
@@ -195,4 +216,5 @@ if [ $SUCCESS_COUNT -gt 0 ]; then
   echo ""
   echo "已重建用户:$REBUILD_LIST"
   echo "密码记录: $PASSWORD_FILE"
+  echo "备份位置: $BACKUP_DIR/$BACKUP_TIME"
 fi
