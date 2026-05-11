@@ -36,7 +36,7 @@ cert /etc/openvpn/easy-rsa/3/pki/issued/server.crt
 key /etc/openvpn/easy-rsa/3/pki/private/server.key
 dh /etc/openvpn/easy-rsa/3/pki/dh.pem
 tls-auth /etc/openvpn/easy-rsa/3/ta.key 0
-crl-verify /etc/openvpn/easy-rsa/3/pki/crl.pem
+crl-verify /etc/openvpn/easy-rsa/3/pki/crl.pem  # 需先执行 ./easyrsa gen-crl 生成此文件
 
 server 10.8.0.0 255.255.255.0
 ifconfig-pool-persist ipp.txt
@@ -154,6 +154,9 @@ Common Name: openvpn
 
 ##签发证书,签约服务端证书
 ./easyrsa sign-req server server
+
+##生成初始 CRL（必须，否则服务启动报错）
+./easyrsa gen-crl
 
 ```
 
