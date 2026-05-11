@@ -17,7 +17,7 @@ yum install -y easy-rsa
 
 mkdir -p /etc/openvpn/
 cp -R /usr/share/easy-rsa/ /etc/openvpn/
-cp /usr/share/doc/openvpn/sample/sample-config-files/server.conf /etc/openvpn/
+cp /usr/share/doc/openvpn/sample/sample-config-files/server.conf /etc/openvpn/server
 cp -r /usr/share/doc/easy-rsa/vars.example /etc/openvpn/easy-rsa/3/vars
 
 ```
@@ -81,7 +81,7 @@ chmod +x /etc/openvpn/server/up.sh
 cat <<EOF > /etc/openvpn/server/down.sh
 #!/bin/sh
 
-/usr/sbin/iptables -D FORWARD -o tun0 -j ACCEPT
+/usr/sbin/iptables -D FORWARD -o tun+ -j ACCEPT
 /usr/sbin/iptables -t nat -D POSTROUTING -s 10.8.0.0/24  -j MASQUERADE
 EOF
 ```

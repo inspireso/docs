@@ -6,10 +6,97 @@ OpenVPN 客户端证书管理工具集。
 
 | 脚本 | 用途 |
 |------|------|
+| `openvpn_client.sh` | 创建单个客户端证书和配置 |
 | `openvpn_batch.sh` | 批量创建客户端证书和配置 |
 | `check_ovpn_key.sh` | 检查单个 .ovpn 文件密码状态 |
 | `check_ovpn_batch.sh` | 批量检查证书密码保护状态 |
 | `rebuild_unencrypted.sh` | 重建未加密用户证书 |
+| `revoke_users.sh` | 批量注销用户证书 |
+
+---
+
+## openvpn_client.sh
+
+创建单个 OpenVPN 客户端证书和配置文件。
+
+### 使用方式
+
+```bash
+# 生成证书（随机密码）并创建配置
+./openvpn_client.sh create user1
+
+# 生成证书（指定密码）
+./openvpn_client.sh create -p "user1@mypassword123" user1
+
+# 指定 CA 密码（避免交互式输入）
+./openvpn_client.sh create -c "ca_password" -p "user1@mypassword123" user1
+
+# 仅创建配置文件（证书已存在）
+./openvpn_client.sh build user1
+```
+
+### 参数说明
+
+| 参数 | 说明 |
+|------|------|
+| `-p <password>` | 指定密码（默认随机生成） |
+| `-c <password>` | 指定 CA 密码（避免交互式输入） |
+
+### 密码规则
+
+默认格式：`用户名@随机8位密码`
+
+密码自动保存到 `/etc/openvpn/client/passwd.txt`
+
+---
+
+## revoke_users.sh
+
+批量注销 OpenVPN 用户证书。
+
+### 使用方式
+
+```bash
+# 仅撤销证书（保留文件）
+./revoke_users.sh user1 user2 user3
+
+# 撤销证书并删除文件
+./revoke_users.sh --delete user1 user2
+
+# 强制模式（跳过确认）
+./revoke_users.sh --force user1 user2
+
+# 强制模式 + 删除文件
+./revoke_users.sh --force --delete user1 user2
+
+# 从文件读取用户列表
+./revoke_users.sh -f users.txt
+./revoke_users.sh --delete -f users.txt
+```
+
+### 参数说明
+
+| 参数 | 说明 |
+|------|------|
+| `<username>` | 要注销的用户名 |
+| `--force` | 跳过确认步骤 |
+| `--delete` | 删除证书文件（默认仅撤销） |
+| `-f <file>` | 从文件读取用户名列表 |
+
+### 执行流程
+
+1. 显示待注销用户列表
+2. 确认操作（除非 `--force`）
+3. 输入 CA 密码（一次性）
+4. 撤销证书
+5. 删除证书文件（如果指定 `--delete`）
+6. 生成 CRL
+
+### 注意事项
+
+- 撤销后需手动重启服务使 CRL 生效：`systemctl restart openvpn-server@jumper`
+- 默认仅撤销证书，保留文件（用户无法连接但文件仍存在）
+- 使用 `--delete` 会删除证书和配置文件
 
 ---
 
@@ -20,11 +107,17 @@ OpenVPN 客户端证书管理工具集。
 ### 使用方式
 
 ```bash
-# 命令行指定用户
+# 命令行指定用户（随机密码）
 ./openvpn_batch.sh create user1 user2 user3
 
 # 从文件读取用户列表
 ./openvpn_batch.sh create -f users.txt
+
+# 从文件读取密码
+./openvpn_batch.sh create -f users.txt -p passwords.txt
+
+# 指定 CA 密码（避免交互式输入）
+./openvpn_batch.sh create -c "ca_password" -f users.txt
 
 # 仅生成配置文件（证书已存在）
 ./openvpn_batch.sh build user1
@@ -37,6 +130,22 @@ OpenVPN 客户端证书管理工具集。
 | `create` | 生成客户端证书（带密码）并创建配置文件 |
 | `build` | 仅创建配置文件（证书已存在） |
 | `-f <file>` | 从文件读取用户名列表（每行一个，支持 # 注释） |
+| `-p <file>` | 从文件读取密码（格式：username  password） |
+| `-c <password>` | 指定 CA 密码（避免交互式输入） |
+
+### 密码文件格式
+
+`-p` 参数指定的密码文件格式：
+
+```
+# 注释行
+user1  user1@mypassword123
+user2  user2@anotherpass456
+```
+
+- 每行格式：`username  password`（空格分隔）
+- 支持 `#` 开头的注释行
+- 未指定的用户使用随机密码
 
 ### 密码规则
 
@@ -51,7 +160,7 @@ OpenVPN 客户端证书管理工具集。
 ### 输出文件
 
 - 配置文件：`/etc/openvpn/client/<username>.ovpn`
-- 密码记录：`/etc/openvpn/client/passwords.txt`
+- 密码记录：`/etc/openvpn/client/passwd.txt`
 
 ---
 
@@ -126,6 +235,12 @@ OpenVPN 客户端证书管理工具集。
 # 从文件读取用户列表
 ./rebuild_unencrypted.sh -f users.txt
 
+# 从文件读取密码
+./rebuild_unencrypted.sh -f users.txt -p passwords.txt
+
+# 指定 CA 密码（避免交互式输入）
+./rebuild_unencrypted.sh --force -c "ca_password" -f users.txt
+
 # 强制模式 + 文件读取
 ./rebuild_unencrypted.sh --force -f users.txt
 ```
@@ -137,6 +252,8 @@ OpenVPN 客户端证书管理工具集。
 | `<username>` | 要重建的用户名 |
 | `--force` | 跳过确认步骤，直接重建 |
 | `-f <file>` | 从文件读取用户名列表 |
+| `-p <file>` | 从文件读取密码（格式：username  password） |
+| `-c <password>` | 指定 CA 密码（避免交互式输入） |
 
 ### 执行流程
 
@@ -230,4 +347,4 @@ user3
 | Easy-RSA 目录 | `/etc/openvpn/easy-rsa/3` |
 | 客户端配置目录 | `/etc/openvpn/client` |
 | 配置模板 | `/etc/openvpn/client/client.ovpn.tpl` |
-| 密码记录文件 | `/etc/openvpn/client/passwords.txt` |
+| 密码记录文件 | `/etc/openvpn/client/passwd.txt` |

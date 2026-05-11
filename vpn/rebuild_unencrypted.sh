@@ -2,24 +2,27 @@
 set -e
 
 # 重建未加密的 OpenVPN 用户证书
-# Usage: rebuild_unencrypted.sh [--force] <username1> <username2> ...
-#    or: rebuild_unencrypted.sh [--force] -f <userlist_file>
+# Usage: rebuild_unencrypted.sh [--force] [-f <userlist_file>] [-p <password_file>] [-c <ca_password>] <username1> ...
 
 if [ -z "$1" ]; then
-  echo "Usage: rebuild_unencrypted.sh [--force] <username1> <username2> ..."
-  echo "   or: rebuild_unencrypted.sh [--force] -f <userlist_file>"
+  echo "Usage: rebuild_unencrypted.sh [--force] [-f <userlist_file>] [-p <password_file>] [-c <ca_password>] <username1> ..."
   echo ""
   echo "Options:"
-  echo "  --force  - 跳过确认步骤，直接重建"
-  echo "  -f       - 从文件读取用户名列表"
+  echo "  --force        - 跳过确认步骤，直接重建"
+  echo "  -f <file>      - 从文件读取用户名列表"
+  echo "  -p <file>      - 从文件读取密码（格式：username  password）"
+  echo "  -c <password>  - 指定 CA 密码（避免交互式输入）"
   echo ""
-  echo "密码规则：用户名@随机8位密码"
+  echo "密码规则：默认 用户名@随机8位密码"
   exit 1
 fi
 
 # 解析参数
 FORCE=false
 USERS_ARGS=""
+USER_FILE=""
+PASSWORD_MAP_FILE=""
+CA_PASSWORD_INPUT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -32,13 +35,28 @@ while [ $# -gt 0 ]; do
         echo "Error: Missing filename after -f"
         exit 1
       fi
-      USER_FILE=$2
-      if [ ! -f "$USER_FILE" ]; then
-        echo "Error: File not found: $USER_FILE"
+      USER_FILE="$2"
+      shift 2
+      ;;
+    -p)
+      if [ -z "$2" ]; then
+        echo "Error: Missing filename after -p"
         exit 1
       fi
-      USERS_ARGS=$(grep -v '^#' "$USER_FILE" | grep -v '^$')
+      PASSWORD_MAP_FILE="$2"
       shift 2
+      ;;
+    -c)
+      if [ -z "$2" ]; then
+        echo "Error: Missing CA password after -c"
+        exit 1
+      fi
+      CA_PASSWORD_INPUT="$2"
+      shift 2
+      ;;
+    -*)
+      echo "Error: Unknown option: $1"
+      exit 1
       ;;
     *)
       USERS_ARGS="$USERS_ARGS $1"
@@ -47,18 +65,42 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# 去除多余空格
-USERS=$(echo "$USERS_ARGS" | tr ' ' '\n' | grep -v '^$' | tr '\n' ' ')
+# 从文件读取用户名列表
+if [ -n "$USER_FILE" ]; then
+  if [ ! -f "$USER_FILE" ]; then
+    echo "Error: File not found: $USER_FILE"
+    exit 1
+  fi
+  USERS=$(grep -v '^#' "$USER_FILE" | grep -v '^$')
+else
+  USERS=$(echo "$USERS_ARGS" | tr ' ' '\n' | grep -v '^$')
+fi
 
 if [ -z "$USERS" ]; then
   echo "Error: No usernames provided"
   exit 1
 fi
 
+# 加载密码映射文件
+declare -A PASSWORD_MAP
+if [ -n "$PASSWORD_MAP_FILE" ]; then
+  if [ ! -f "$PASSWORD_MAP_FILE" ]; then
+    echo "Error: Password file not found: $PASSWORD_MAP_FILE"
+    exit 1
+  fi
+  echo "Loading passwords from: $PASSWORD_MAP_FILE"
+  while IFS=' ' read -r user pass; do
+    if [[ "$user" =~ ^# ]] || [ -z "$user" ]; then
+      continue
+    fi
+    PASSWORD_MAP["$user"]="$pass"
+  done < "$PASSWORD_MAP_FILE"
+fi
+
 EASY_RSA_DIR=/etc/openvpn/easy-rsa/3
 OVPN_CLIENT_DIR=/etc/openvpn/client
 OVPN_TPL="$OVPN_CLIENT_DIR/client.ovpn.tpl"
-PASSWORD_FILE="$OVPN_CLIENT_DIR/passwords.txt"
+PASSWORD_FILE="$OVPN_CLIENT_DIR/passwd.txt"
 BACKUP_DIR="$OVPN_CLIENT_DIR/backup"
 
 if [ ! -f "$OVPN_TPL" ]; then
@@ -84,10 +126,14 @@ if [ "$FORCE" = false ]; then
 fi
 
 # 输入 CA 密码（一次性）
-echo ""
-echo "请输入 CA 密码（用于撤销旧证书和签发新证书）"
-read -s -p "CA Password: " CA_PASSWORD
-echo ""
+if [ -n "$CA_PASSWORD_INPUT" ]; then
+  CA_PASSWORD="$CA_PASSWORD_INPUT"
+else
+  echo ""
+  echo "请输入 CA 密码（用于撤销旧证书和签发新证书）"
+  read -s -p "CA Password: " CA_PASSWORD
+  echo ""
+fi
 
 if [ -z "$CA_PASSWORD" ]; then
   echo "Error: CA password is required"
@@ -143,9 +189,15 @@ for OVPN_USER in $USERS; do
   rm -f "./pki/reqs/$OVPN_USER.req"
   rm -f "$OVPN_CONF"
 
-  # 4. 生成新密码：用户名@随机8位
-  RANDOM_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 8)
-  USER_PASSWORD="$OVPN_USER@$RANDOM_PASS"
+  # 4. 设置密码：从映射文件读取或随机生成
+  if [ -n "${PASSWORD_MAP[$OVPN_USER]}" ]; then
+    USER_PASSWORD="${PASSWORD_MAP[$OVPN_USER]}"
+    echo "  Using specified password: $USER_PASSWORD"
+  else
+    RANDOM_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 8)
+    USER_PASSWORD="$OVPN_USER@$RANDOM_PASS"
+    echo "  Generated password: $USER_PASSWORD"
+  fi
 
   # 5. 生成新证书（带密码）
   echo "  生成新证书..."
@@ -190,7 +242,6 @@ for OVPN_USER in $USERS; do
   SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 
   echo "  Success: $OVPN_CONF"
-  echo "  Password: $USER_PASSWORD"
 done
 
 # 生成 CRL

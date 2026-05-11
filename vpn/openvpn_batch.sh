@@ -1,51 +1,89 @@
 #!/usr/bin/env bash
 set -e
 
-# Usage: ovpn_batch.sh create|build <username1> <username2> ...
-#    or: ovpn_batch.sh create|build -f <userlist_file>
+# Usage: ovpn_batch.sh create|build [-f <userlist_file>] [-p <password_file>] [-c <ca_password>] <username1> ...
 #
-# 密码规则：用户名@随机8位密码
-# CA密码：脚本开始时一次性输入，用于签发所有证书
+# 密码规则：默认 用户名@随机8位密码，可通过 -p 从文件读取
+# CA密码：脚本开始时一次性输入，或通过 -c 参数指定
 
 if [ -z "$1" ]; then
-  echo "Usage: ovpn_batch.sh create|build <username1> <username2> ..."
-  echo "   or: ovpn_batch.sh create|build -f <userlist_file>"
+  echo "Usage: ovpn_batch.sh create|build [-f <userlist_file>] [-p <password_file>] [-c <ca_password>] <username1> ..."
   echo ""
   echo "Commands:"
   echo "  create  - 生成客户端证书（带密码）并创建配置文件"
   echo "  build   - 仅创建配置文件（证书已存在）"
   echo ""
   echo "Options:"
-  echo "  -f      - 从文件读取用户名列表（每行一个用户名）"
+  echo "  -f <file>      - 从文件读取用户名列表（每行一个用户名）"
+  echo "  -p <file>      - 从文件读取密码（格式：username  password）"
+  echo "  -c <password>  - 指定 CA 密码（避免交互式输入）"
   echo ""
-  echo "密码规则：用户名@随机8位密码"
+  echo "密码规则：默认 用户名@随机8位密码"
   exit 1
 fi
 
-ACTION=$1
-shift
+# 解析参数
+ACTION=""
+USERS_ARGS=""
+USER_FILE=""
+PASSWORD_MAP_FILE=""
+CA_PASSWORD_INPUT=""
 
-if [ "$ACTION" != "create" ] && [ "$ACTION" != "build" ]; then
+while [ $# -gt 0 ]; do
+  case "$1" in
+    create|build)
+      ACTION="$1"
+      shift
+      ;;
+    -f)
+      if [ -z "$2" ]; then
+        echo "Error: Missing filename after -f"
+        exit 1
+      fi
+      USER_FILE="$2"
+      shift 2
+      ;;
+    -p)
+      if [ -z "$2" ]; then
+        echo "Error: Missing filename after -p"
+        exit 1
+      fi
+      PASSWORD_MAP_FILE="$2"
+      shift 2
+      ;;
+    -c)
+      if [ -z "$2" ]; then
+        echo "Error: Missing CA password after -c"
+        exit 1
+      fi
+      CA_PASSWORD_INPUT="$2"
+      shift 2
+      ;;
+    -*)
+      echo "Error: Unknown option: $1"
+      exit 1
+      ;;
+    *)
+      USERS_ARGS="$USERS_ARGS $1"
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$ACTION" ]; then
   echo "Error: Action must be 'create' or 'build'"
   exit 1
 fi
 
 # 从文件读取用户名列表
-if [ "$1" == "-f" ]; then
-  if [ -z "$2" ]; then
-    echo "Error: Missing filename after -f"
-    exit 1
-  fi
-
-  USER_FILE=$2
+if [ -n "$USER_FILE" ]; then
   if [ ! -f "$USER_FILE" ]; then
     echo "Error: File not found: $USER_FILE"
     exit 1
   fi
-
   USERS=$(grep -v '^#' "$USER_FILE" | grep -v '^$')
 else
-  USERS="$@"
+  USERS=$(echo "$USERS_ARGS" | tr ' ' '\n' | grep -v '^$')
 fi
 
 if [ -z "$USERS" ]; then
@@ -53,10 +91,27 @@ if [ -z "$USERS" ]; then
   exit 1
 fi
 
+# 加载密码映射文件
+declare -A PASSWORD_MAP
+if [ -n "$PASSWORD_MAP_FILE" ]; then
+  if [ ! -f "$PASSWORD_MAP_FILE" ]; then
+    echo "Error: Password file not found: $PASSWORD_MAP_FILE"
+    exit 1
+  fi
+  echo "Loading passwords from: $PASSWORD_MAP_FILE"
+  while IFS=' ' read -r user pass; do
+    # 跳过注释和空行
+    if [[ "$user" =~ ^# ]] || [ -z "$user" ]; then
+      continue
+    fi
+    PASSWORD_MAP["$user"]="$pass"
+  done < "$PASSWORD_MAP_FILE"
+fi
+
 EASY_RSA_DIR=/etc/openvpn/easy-rsa/3
 OVPN_CLIENT_DIR=/etc/openvpn/client
 OVPN_TPL="$OVPN_CLIENT_DIR/client.ovpn.tpl"
-PASSWORD_FILE="$OVPN_CLIENT_DIR/passwords.txt"
+PASSWORD_FILE="$OVPN_CLIENT_DIR/passwd.txt"
 
 if [ ! -f "$OVPN_TPL" ]; then
   echo "Error: Template file not found: $OVPN_TPL"
@@ -67,11 +122,15 @@ cd $EASY_RSA_DIR
 
 # create 模式：输入 CA 密码（一次性）
 if [ "$ACTION" == "create" ]; then
-  echo "=========================================="
-  echo "请输入 CA 密码（用于签发所有客户端证书）"
-  echo "=========================================="
-  read -s -p "CA Password: " CA_PASSWORD
-  echo ""
+  if [ -n "$CA_PASSWORD_INPUT" ]; then
+    CA_PASSWORD="$CA_PASSWORD_INPUT"
+  else
+    echo "=========================================="
+    echo "请输入 CA 密码（用于签发所有客户端证书）"
+    echo "=========================================="
+    read -s -p "CA Password: " CA_PASSWORD
+    echo ""
+  fi
 
   if [ -z "$CA_PASSWORD" ]; then
     echo "Error: CA password is required"
@@ -79,8 +138,8 @@ if [ "$ACTION" == "create" ]; then
   fi
 fi
 
-# 初始化密码记录文件
-echo "# OpenVPN Client Passwords - Generated at $(date)" > "$PASSWORD_FILE"
+# 初始化密码记录文件（追加模式，不覆盖）
+echo "# OpenVPN Client Passwords - Generated at $(date)" >> "$PASSWORD_FILE"
 echo "# Format: username  password" >> "$PASSWORD_FILE"
 
 SUCCESS_COUNT=0
@@ -98,9 +157,15 @@ for OVPN_USER in $USERS; do
     if [ -f "./pki/issued/$OVPN_USER.crt" ]; then
       echo "Warning: Certificate already exists for $OVPN_USER, skipping certificate generation"
     else
-      # 生成随机密码：用户名@随机8位
-      RANDOM_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 8)
-      USER_PASSWORD="$OVPN_USER@$RANDOM_PASS"
+      # 设置密码：从映射文件读取或随机生成
+      if [ -n "${PASSWORD_MAP[$OVPN_USER]}" ]; then
+        USER_PASSWORD="${PASSWORD_MAP[$OVPN_USER]}"
+        echo "Using specified password: $USER_PASSWORD"
+      else
+        RANDOM_PASS=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 8)
+        USER_PASSWORD="$OVPN_USER@$RANDOM_PASS"
+        echo "Generated random password: $USER_PASSWORD"
+      fi
 
       echo "Generating certificate for $OVPN_USER..."
 
