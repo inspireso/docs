@@ -11,7 +11,7 @@ if [ ! -d "$OVPN_DIR" ]; then
   exit 1
 fi
 
-OVPN_FILES=$(find "$OVPN_DIR" -name "*.ovpn" -type f)
+OVPN_FILES=$(find "$OVPN_DIR" -maxdepth 1 -name "*.ovpn" -type f)
 
 if [ -z "$OVPN_FILES" ]; then
   echo "No .ovpn files found in $OVPN_DIR"
