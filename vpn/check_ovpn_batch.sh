@@ -35,7 +35,7 @@ for OVPN_FILE in $OVPN_FILES; do
 
   # 提取私钥并检查是否有 ENCRYPTED 标记
   TEMP_KEY=$(mktemp)
-  sed -n '/<key>/,/<\/key>/p' "$OVPN_FILE" | sed '1d;$d' > "$TEMP_KEY"
+  sed -n '/<key>/,/<\/key>/p' "$OVPN_FILE" | grep -v '<key>' | grep -v '</key>' > "$TEMP_KEY"
 
   if grep -q "ENCRYPTED" "$TEMP_KEY"; then
     ENCRYPTED=$((ENCRYPTED + 1))
