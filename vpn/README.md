@@ -94,7 +94,8 @@ OpenVPN 客户端证书管理工具集。
 
 ### 注意事项
 
-- 撤销后需手动重启服务使 CRL 生效：`systemctl restart openvpn-server@jumper`
+- 撤销后**必须重启服务**使 CRL 生效：`systemctl restart openvpn-server@jumper`
+- 服务端配置需包含 `crl-verify /etc/openvpn/easy-rsa/3/pki/crl.pem`
 - 默认仅撤销证书，保留文件（用户无法连接但文件仍存在）
 - 使用 `--delete` 会删除证书和配置文件
 
@@ -283,7 +284,8 @@ user2  user2@anotherpass456
 
 ### 注意事项
 
-- 重建后需手动重启 OpenVPN 服务：`systemctl restart openvpn-server@jumper`
+- 重建后**必须重启服务**使 CRL 生效：`systemctl restart openvpn-server@jumper`
+- 服务端配置需包含 `crl-verify /etc/openvpn/easy-rsa/3/pki/crl.pem`，否则旧证书仍可用
 - 旧配置文件将失效，需分发新密码给用户
 - 旧证书已自动备份，可在备份目录中找到
 

@@ -36,6 +36,7 @@ cert /etc/openvpn/easy-rsa/3/pki/issued/server.crt
 key /etc/openvpn/easy-rsa/3/pki/private/server.key
 dh /etc/openvpn/easy-rsa/3/pki/dh.pem
 tls-auth /etc/openvpn/easy-rsa/3/ta.key 0
+crl-verify /etc/openvpn/easy-rsa/3/pki/crl.pem
 
 server 10.8.0.0 255.255.255.0
 ifconfig-pool-persist ipp.txt
