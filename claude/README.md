@@ -70,21 +70,48 @@ npm update -g @anthropic-ai/claude-code
 
 ## 配置国内模型
 
+
+### `~/.claude.json`
+
 Claude Code 支持接入兼容 Anthropic API 的国内模型服务，在配置文件中设置 `env` 字段即可。
 
-> **重要：** 使用国内模型前，需在配置文件中设置 `"hasCompletedOnboarding": true` 以跳过 Anthropic 认证引导。
+> **重要：** 使用国内模型前，需在配置文件中设置 `"hasCompletedOnboarding": true` ?> 以跳过 Anthropic 认证引导。
 
-### 配置文件位置
+
+| 操作系统 | 用户配置路径 |
+|---------|-------------|
+| Windows | `%USERPROFILE%\.claude.json` |
+| Linux/macOS | `~/.claude.json` |
+
+```json
+{
+    "hasCompletedOnboarding": true
+}
+```
+
+### `~/.claude/settings.json`
+>重要: 使用国内模型,一定要在配置中添加  `"CLAUDE_CODE_ATTRIBUTION_HEADER": "0"`,不然 token 消耗量会非>常大
 
 | 操作系统 | 配置文件路径 |
 |---------|-------------|
 | Windows | `%USERPROFILE%\.claude\settings.json` |
 | Linux/macOS | `~/.claude/settings.json` |
 
-| 操作系统 | 用户配置路径 |
-|---------|-------------|
-| Windows | `%USERPROFILE%\.claude.json` |
-| Linux/macOS | `~/.claude.json` |
+
+
+### 阿里云 CodingPlan 配置样例
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://coding.dashscope.aliyuncs.com/apps/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "sk-sp-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "ANTHROPIC_MODEL": "qwen3.5-plus",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  }
+}
+```
 
 ### DeepSeek 配置样例
 
@@ -94,19 +121,7 @@ Claude Code 支持接入兼容 Anthropic API 的国内模型服务，在配置�
     "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
-  }
-}
-```
-
-### 阿里云 CodingPlan 配置样例
-
-```json
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://coding.dashscope.aliyuncs.com/apps/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "sk-sp-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "ANTHROPIC_MODEL": "glm-5",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
   }
 }
@@ -202,6 +217,10 @@ claude plugin update ai-engineering
 | `doc-gen` | 文档生成 |
 
 调用方式：`/brainstorming`、`/review`、`/qa` 等斜杠命令，或让 Claude 自动判断何时使用。
+
+### 推荐 Skills 与 Plugins 收录
+
+更多 Skills 与 Plugins 见 [`skills.md`](./skills.md)。
 
 ---
 
