@@ -1,0 +1,8040 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识库星图</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+  :root {
+    --bg: #23242b;
+    --panel: #2d2e37;
+    --panel-hover: #3a3b47;
+    --text: #d8d6cf;
+    --text-dim: #9a9892;
+    --accent: #c9b8a7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex;
+  }
+  /* 主图区 */
+  #graph { flex: 1; height: 100vh; }
+  /* 右栏 */
+  #sidebar {
+    width: 300px; height: 100vh; overflow-y: auto;
+    background: var(--panel); border-left: 1px solid #3a3b47;
+    padding: 16px 14px;
+  }
+  #sidebar h1 { font-size: 15px; font-weight: 600; color: var(--accent); margin-bottom: 10px; letter-spacing: 1px; }
+  /* 搜索框 */
+  #search {
+    width: 100%; padding: 6px 10px; margin-bottom: 4px;
+    background: var(--bg); border: 1px solid #3a3b47; border-radius: 6px;
+    color: var(--text); font-size: 12px; outline: none;
+  }
+  #search:focus { border-color: var(--accent); }
+  #search::placeholder { color: var(--text-dim); }
+  #sidebar h2 {
+    font-size: 11px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin: 18px 0 8px; border-bottom: 1px solid #3a3b47; padding-bottom: 4px;
+  }
+  /* 切片按钮 */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 12px; padding: 3px 10px; border-radius: 12px;
+    background: var(--panel-hover); color: var(--text-dim);
+    cursor: pointer; user-select: none; border: 1px solid transparent;
+    transition: all .15s;
+  }
+  .chip:hover { color: var(--text); }
+  .chip.active { background: #8d8f9c; color: #23242b; border-color: #a9abb8; }
+  .chip.more { border: 1px dashed #4a4b56; font-size: 11px; color: var(--text-dim); }
+  .chip.more:hover { color: var(--accent); border-color: var(--accent); }
+  /* 图例（可点击过滤） */
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 12px; color: var(--text-dim); }
+  .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; user-select: none; transition: all .15s; }
+  .legend-item:hover { background: var(--panel-hover); color: var(--text); }
+  .legend-item.active { background: #8d8f9c; color: #23242b; border-color: #a9abb8; }
+  .legend-item .count { margin-left: auto; font-size: 11px; opacity: .7; }
+  /* 详情面板 */
+  #detail { display: none; }
+  #detail.show { display: block; }
+  #detail .close { float: right; cursor: pointer; color: var(--text-dim); font-size: 13px; }
+  #detail .close:hover { color: var(--text); }
+  #detail h3 { font-size: 14px; color: var(--accent); margin-bottom: 6px; word-break: break-all; }
+  #detail .row { font-size: 12px; color: var(--text-dim); margin: 3px 0; word-break: break-all; }
+  #detail .row b { color: var(--text); font-weight: 500; margin-right: 6px; }
+  #detail .synopsis { font-size: 12px; color: var(--text); line-height: 1.6; margin-top: 8px; padding: 8px 10px; background: var(--bg); border-radius: 6px; }
+  #detail .tags { margin-top: 8px; }
+  #detail .tag { display: inline-block; font-size: 11px; padding: 1px 8px; margin: 2px 4px 2px 0; border-radius: 10px; background: #3a3b47; color: var(--text-dim); }
+  #detail a.path { color: #8fa5c9; text-decoration: none; font-size: 11px; }
+  #detail a.path:hover { text-decoration: underline; }
+  #stats { font-size: 11px; color: var(--text-dim); margin-top: 14px; padding-top: 10px; border-top: 1px solid #3a3b47; }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<div id="sidebar">
+  <h1>✦ 知识库星图</h1>
+
+  <input type="search" id="search" placeholder="搜索标题 / 标签 / 路径…（Esc 清空）">
+
+  <div class="sec" id="sec-topic"><h2>切片 · 主题</h2><div class="chips" id="slicer-topic"></div></div>
+  <div class="sec" id="sec-subject"><h2>切片 · 主体</h2><div class="chips" id="slicer-subject"></div></div>
+  <div class="sec" id="sec-type"><h2>切片 · 类型</h2><div class="chips" id="slicer-type"></div></div>
+  <div class="sec" id="sec-tag"><h2>切片 · 标签</h2><div class="chips" id="slicer-tag"></div></div>
+
+  <div class="sec" id="sec-legend"><h2>图例 · 格式</h2><div class="legend" id="legend"></div></div>
+
+  <h2>详情</h2>
+  <div id="detail"></div>
+
+  <div id="stats"></div>
+</div>
+
+<script>
+const GRAPH = {
+ "root": "/Users/my/github/inspireso/docs/",
+ "nodes": [
+  {
+   "id": 0,
+   "path": "LICENSE",
+   "title": "LICENSE",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 11357,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 1,
+   "path": "README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [
+    "文档索引",
+    "目录导航",
+    "知识库入口"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 299,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 2,
+   "path": "_config.yml",
+   "title": "_config",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 26,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 3,
+   "path": "aix/agent-mcp-skill-architecture.md",
+   "title": "agent-mcp-skill-architecture",
+   "type": "",
+   "subject": "",
+   "topic": "aix",
+   "tags": [
+    "概念解析",
+    "调用链路",
+    "架构协作",
+    "AI 生态"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 12304,
+   "fmt": "md",
+   "degree": 3
+  },
+  {
+   "id": 4,
+   "path": "aix/ai.md",
+   "title": "ai",
+   "type": "",
+   "subject": "",
+   "topic": "aix",
+   "tags": [
+    "架构图",
+    "Mermaid",
+    "分层设计"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1427,
+   "fmt": "md",
+   "degree": 3
+  },
+  {
+   "id": 5,
+   "path": "aix/comic/claude-code-adventure/analysis.md",
+   "title": "analysis",
+   "type": "",
+   "subject": "",
+   "topic": "claude-code-adventure",
+   "tags": [
+    "漫画策划",
+    "读者定位",
+    "叙事设计",
+    "风格选择"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1752,
+   "fmt": "md",
+   "degree": 2
+  },
+  {
+   "id": 6,
+   "path": "aix/comic/claude-code-adventure/characters/characters.md",
+   "title": "characters",
+   "type": "",
+   "subject": "",
+   "topic": "characters",
+   "tags": [
+    "漫画设定",
+    "人物形象",
+    "视觉参考"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2055,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 7,
+   "path": "aix/comic/claude-code-adventure/prompts/00-cover-claude-code-adventure.md",
+   "title": "00-cover-claude-code-adventure",
+   "type": "",
+   "subject": "",
+   "topic": "prompts",
+   "tags": [
+    "漫画封面",
+    "代码迷宫",
+    "分镜描述"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1343,
+   "fmt": "md",
+   "degree": 6
+  },
+  {
+   "id": 8,
+   "path": "aix/comic/claude-code-adventure/prompts/01-page-not-magic.md",
+   "title": "01-page-not-magic",
+   "type": "",
+   "subject": "",
+   "topic": "prompts",
+   "tags": [
+    "人机协作",
+    "破除误解",
+    "搭档关系"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1269,
+   "fmt": "md",
+   "degree": 6
+  },
+  {
+   "id": 9,
+   "path": "aix/comic/claude-code-adventure/prompts/02-page-clear-task.md",
+   "title": "02-page-clear-task",
+   "type": "",
+   "subject": "",
+   "topic": "prompts",
+   "tags": [
+    "任务拆解",
+    "需求明确",
+    "沟通清晰"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1228,
+   "fmt": "md",
+   "degree": 6
+  },
+  {
+   "id": 10,
+   "path": "aix/comic/claude-code-adventure/prompts/03-page-read-map.md",
+   "title": "03-page-read-map",
+   "type": "",
+   "subject": "",
+   "topic": "prompts",
+   "tags": [
+    "项目结构",
+    "理解先行",
+    "代码地图"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1305,
+   "fmt": "md",
+   "degree": 6
+  },
+  {
+   "id": 11,
+   "path": "aix/comic/claude-code-adventure/prompts/04-page-plan-first.md",
+   "title": "04-page-plan-first",
+   "type": "",
+   "subject": "",
+   "topic": "prompts",
+   "tags": [
+    "规划先行",
+    "小步迭代",
+    "分步执行"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1247,
+   "fmt": "md",
+   "degree": 6
+  },
+  {
+   "id": 12,
+   "path": "aix/comic/claude-code-adventure/prompts/05-page-command-visible.md",
+   "title": "05-page-command-visible",
+   "type": "",
+   "subject": "",
+   "topic": "prompts",
+   "tags": [
+    "命令透明",
+    "输出可读",
+    "拒绝黑箱"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1311,
+   "fmt": "md",
+   "degree": 6
+  },
+  {
+   "id": 13,
+   "path": "aix/comic/claude-code-adventure/prompts/06-page-verify-boundary.md",
+   "title": "06-page-verify-boundary",
+   "type": "",
+   "subject": "",
+   "topic": "prompts",
+   "tags": [
+    "验证边界",
+    "风险确认",
+    "测试通过"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1507,
+   "fmt": "md",
+   "degree": 6
+  },
+  {
+   "id": 14,
+   "path": "aix/comic/claude-code-adventure/source-claude-code-adventure.md",
+   "title": "source-claude-code-adventure",
+   "type": "",
+   "subject": "",
+   "topic": "claude-code-adventure",
+   "tags": [
+    "创作大纲",
+    "漫画蓝图",
+    "入门教学"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 896,
+   "fmt": "md",
+   "degree": 2
+  },
+  {
+   "id": 15,
+   "path": "aix/comic/claude-code-adventure/storyboard.md",
+   "title": "storyboard",
+   "type": "",
+   "subject": "",
+   "topic": "claude-code-adventure",
+   "tags": [
+    "分镜脚本",
+    "视觉符号",
+    "页面设计",
+    "角色弧线"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5902,
+   "fmt": "md",
+   "degree": 2
+  },
+  {
+   "id": 16,
+   "path": "aix/open-webui.md",
+   "title": "open-webui",
+   "type": "",
+   "subject": "",
+   "topic": "aix",
+   "tags": [
+    "Docker 部署",
+    "容器编排",
+    "自动更新"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 862,
+   "fmt": "md",
+   "degree": 3
+  },
+  {
+   "id": 17,
+   "path": "aix/temp.html",
+   "title": "temp",
+   "type": "",
+   "subject": "",
+   "topic": "aix",
+   "tags": [
+    "网页版",
+    "HTML 文档",
+    "概念转存"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 15994,
+   "fmt": "网页",
+   "degree": 3
+  },
+  {
+   "id": 18,
+   "path": "chia/bash.sh",
+   "title": "bash",
+   "type": "",
+   "subject": "",
+   "topic": "chia",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 210,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 19,
+   "path": "chia/chia.md",
+   "title": "chia",
+   "type": "",
+   "subject": "",
+   "topic": "chia",
+   "tags": [
+    "挖矿教程",
+    "P盘",
+    "节点安装",
+    "农场管理"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1082,
+   "fmt": "md",
+   "degree": 1
+  },
+  {
+   "id": 20,
+   "path": "claude/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "claude",
+   "tags": [
+    "安装指南",
+    "国内模型配置",
+    "状态栏定制",
+    "命令速查"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 14427,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 21,
+   "path": "claude/insights-report-2026-04-26.md",
+   "title": "insights-report-2026-04-26",
+   "type": "",
+   "subject": "",
+   "topic": "claude",
+   "tags": [
+    "使用复盘",
+    "会话洞察",
+    "交互风格",
+    "改进建议"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 8841,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 22,
+   "path": "claude/karpathy-guidelines.md",
+   "title": "karpathy-guidelines",
+   "type": "",
+   "subject": "",
+   "topic": "claude",
+   "tags": [
+    "编码准则",
+    "LLM 陷阱",
+    "行为规范"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2563,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 23,
+   "path": "claude/skills.md",
+   "title": "skills",
+   "type": "",
+   "subject": "",
+   "topic": "claude",
+   "tags": [
+    "插件收录",
+    "知识图谱",
+    "教育漫画"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2606,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 24,
+   "path": "claude/statusline.sh",
+   "title": "statusline",
+   "type": "",
+   "subject": "",
+   "topic": "claude",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2303,
+   "fmt": "其他",
+   "degree": 5
+  },
+  {
+   "id": 25,
+   "path": "claude/vscode.md",
+   "title": "vscode",
+   "type": "",
+   "subject": "",
+   "topic": "claude",
+   "tags": [
+    "编辑器集成",
+    "扩展安装",
+    "国内模型配置"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6544,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 26,
+   "path": "clickhouse/docker-compose.yaml",
+   "title": "docker-compose",
+   "type": "",
+   "subject": "",
+   "topic": "clickhouse",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 660,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 27,
+   "path": "docker.md",
+   "title": "docker",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [
+    "容器",
+    "安装部署",
+    "镜像加速",
+    "日志管理"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2852,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 28,
+   "path": "docs.code-workspace",
+   "title": "docs",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 284,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 29,
+   "path": "ether/init-eth-node.md",
+   "title": "init-eth-node",
+   "type": "",
+   "subject": "",
+   "topic": "ether",
+   "tags": [
+    "geth节点",
+    "数据盘初始化",
+    "systemd服务",
+    "静态节点",
+    "节点运维"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4636,
+   "fmt": "md",
+   "degree": 1
+  },
+  {
+   "id": 30,
+   "path": "ether/init-eth-node.sh",
+   "title": "init-eth-node",
+   "type": "",
+   "subject": "",
+   "topic": "ether",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1730,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 31,
+   "path": "ethereum/ETH2.md",
+   "title": "ETH2",
+   "type": "",
+   "subject": "",
+   "topic": "ethereum",
+   "tags": [
+    "信标节点",
+    "验证者",
+    "主网部署",
+    "Prysm"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4181,
+   "fmt": "md",
+   "degree": 4
+  },
+  {
+   "id": 32,
+   "path": "ethereum/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "ethereum",
+   "tags": [
+    "geth部署",
+    "数据盘格式化",
+    "节点升级"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1643,
+   "fmt": "md",
+   "degree": 4
+  },
+  {
+   "id": 33,
+   "path": "ethereum/core-geth.sh",
+   "title": "core-geth",
+   "type": "",
+   "subject": "",
+   "topic": "ethereum",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2705,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 34,
+   "path": "ethereum/geth.sh",
+   "title": "geth",
+   "type": "",
+   "subject": "",
+   "topic": "ethereum",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2300,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 35,
+   "path": "ethereum/mev-geth.sh",
+   "title": "mev-geth",
+   "type": "",
+   "subject": "",
+   "topic": "ethereum",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2429,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 36,
+   "path": "ffmpeg.md",
+   "title": "ffmpeg",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [
+    "音视频转换",
+    "音频提取",
+    "命令行工具"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 795,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 37,
+   "path": "fluentd.md",
+   "title": "fluentd",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [
+    "日志采集",
+    "nginx日志",
+    "日志转发",
+    "Elasticsearch"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1586,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 38,
+   "path": "fmz/grid1-BotVS.js",
+   "title": "grid1-BotVS",
+   "type": "",
+   "subject": "",
+   "topic": "fmz",
+   "tags": [
+    "网格交易",
+    "期货策略",
+    "机械化交易",
+    "多空网格"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4318,
+   "fmt": "代码",
+   "degree": 3
+  },
+  {
+   "id": 39,
+   "path": "fmz/grid2-feature.js",
+   "title": "grid2-feature",
+   "type": "",
+   "subject": "",
+   "topic": "fmz",
+   "tags": [
+    "合约网格",
+    "加密货币",
+    "马丁格尔",
+    "阶梯加仓"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9893,
+   "fmt": "代码",
+   "degree": 3
+  },
+  {
+   "id": 40,
+   "path": "gitlab.md",
+   "title": "gitlab",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [
+    "代码托管",
+    "容器部署",
+    "备份还原",
+    "SVN迁移",
+    "CI运行器"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4109,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 41,
+   "path": "golang/bip44/go.mod",
+   "title": "go",
+   "type": "",
+   "subject": "",
+   "topic": "bip44",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 600,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 42,
+   "path": "golang/bip44/go.sum",
+   "title": "go",
+   "type": "",
+   "subject": "",
+   "topic": "bip44",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4344,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 43,
+   "path": "golang/bip44/main.go",
+   "title": "main",
+   "type": "",
+   "subject": "",
+   "topic": "bip44",
+   "tags": [
+    "助记词",
+    "以太坊地址",
+    "密钥派生",
+    "HD 钱包"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1658,
+   "fmt": "代码",
+   "degree": 2
+  },
+  {
+   "id": 44,
+   "path": "golang/fmz/bluefin.go",
+   "title": "bluefin",
+   "type": "",
+   "subject": "",
+   "topic": "fmz",
+   "tags": [
+    "交易所API",
+    "REST客户端",
+    "行情接口",
+    "签名认证"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 19067,
+   "fmt": "代码",
+   "degree": 3
+  },
+  {
+   "id": 45,
+   "path": "golang/go.md",
+   "title": "go",
+   "type": "",
+   "subject": "",
+   "topic": "golang",
+   "tags": [
+    "Go语言",
+    "入口文档"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 13,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 46,
+   "path": "java/jvm.md",
+   "title": "jvm",
+   "type": "",
+   "subject": "",
+   "topic": "java",
+   "tags": [
+    "内存模型",
+    "GC调优",
+    "JVM参数",
+    "垃圾回收"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9115,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 47,
+   "path": "k6/hello.js",
+   "title": "hello",
+   "type": "",
+   "subject": "",
+   "topic": "k6",
+   "tags": [
+    "压力测试",
+    "并发压测",
+    "k6脚本"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 739,
+   "fmt": "代码",
+   "degree": 0
+  },
+  {
+   "id": 48,
+   "path": "kubernetes/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "目录索引",
+    "版本导航",
+    "文档清单"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 294,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 49,
+   "path": "kubernetes/faq.md",
+   "title": "faq",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "证书更新",
+    "证书认证",
+    "镜像清理",
+    "故障排查",
+    "kubeadm"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 17111,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 50,
+   "path": "kubernetes/install-ubuntu.sh",
+   "title": "install-ubuntu",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 7057,
+   "fmt": "其他",
+   "degree": 10
+  },
+  {
+   "id": 51,
+   "path": "kubernetes/install.sh",
+   "title": "install",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5659,
+   "fmt": "其他",
+   "degree": 10
+  },
+  {
+   "id": 52,
+   "path": "kubernetes/kubernetes1.10.md",
+   "title": "kubernetes1.10",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "集群部署",
+    "calico",
+    "监控",
+    "helm",
+    "nginx-ingress"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6979,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 53,
+   "path": "kubernetes/kubernetes1.14.md",
+   "title": "kubernetes1.14",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "集群部署",
+    "ipvs模式",
+    "flannel",
+    "dashboard"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 7349,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 54,
+   "path": "kubernetes/kubernetes1.20.md",
+   "title": "kubernetes1.20",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "集群部署",
+    "containerd",
+    "GPU节点",
+    "证书更新",
+    "Ubuntu"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9428,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 55,
+   "path": "kubernetes/kubernetes1.5.MD",
+   "title": "kubernetes1.5",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "集群部署",
+    "weavenet",
+    "镜像加速",
+    "kubeadm"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5432,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 56,
+   "path": "kubernetes/kubernetes1.6.md",
+   "title": "kubernetes1.6",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "集群部署",
+    "weavenet",
+    "calico",
+    "内核升级"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5323,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 57,
+   "path": "kubernetes/kubernetes1.7.md",
+   "title": "kubernetes1.7",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "集群部署",
+    "calico",
+    "监控",
+    "dashboard",
+    "ingress"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6824,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 58,
+   "path": "kubernetes/microk8s.md",
+   "title": "microk8s",
+   "type": "",
+   "subject": "",
+   "topic": "kubernetes",
+   "tags": [
+    "snap安装",
+    "节点加入",
+    "镜像仓库替换",
+    "snapd修复"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2383,
+   "fmt": "md",
+   "degree": 10
+  },
+  {
+   "id": 59,
+   "path": "linux/LVM.md",
+   "title": "LVM",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "磁盘扩容",
+    "逻辑卷",
+    "PV扩容",
+    "文件系统扩容"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3414,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 60,
+   "path": "linux/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "目录索引",
+    "基础技巧",
+    "入门指南"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 321,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 61,
+   "path": "linux/SIG.md",
+   "title": "SIG",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "进程信号",
+    "退出状态码",
+    "core dump",
+    "信号处理"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3980,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 62,
+   "path": "linux/assets/linux-performance-tools.png",
+   "title": "linux-performance-tools",
+   "type": "",
+   "subject": "",
+   "topic": "assets",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 947214,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 63,
+   "path": "linux/autossh.md",
+   "title": "autossh",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "SSH隧道",
+    "端口转发",
+    "内网穿透",
+    "systemd服务"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2844,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 64,
+   "path": "linux/centos.md",
+   "title": "centos",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "静态IP配置",
+    "阿里云镜像",
+    "Docker安装",
+    "系统初始化"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1459,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 65,
+   "path": "linux/dnsmasq.md",
+   "title": "dnsmasq",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "DNS缓存",
+    "DNS代理",
+    "端口重定向"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1135,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 66,
+   "path": "linux/gpu.md",
+   "title": "gpu",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "AMD显卡",
+    "NVIDIA显卡",
+    "显卡驱动",
+    "超频调优",
+    "风扇控制"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4466,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 67,
+   "path": "linux/gpu.sh",
+   "title": "gpu",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1089,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 68,
+   "path": "linux/img.md",
+   "title": "img",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "镜像定制",
+    "HiveOS",
+    "系统精简",
+    "软件源替换"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3838,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 69,
+   "path": "linux/iptables.md",
+   "title": "iptables",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "流量中转",
+    "DNAT转发",
+    "NAT",
+    "端口转发"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 838,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 70,
+   "path": "linux/linux.md",
+   "title": "linux",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "网络配置",
+    "磁盘扩容",
+    "性能测试",
+    "系统调优",
+    "文件同步"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 36149,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 71,
+   "path": "linux/nat.md",
+   "title": "nat",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "内核参数调优",
+    "连接跟踪",
+    "TCP调优",
+    "端口转发"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 7699,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 72,
+   "path": "linux/perf.md",
+   "title": "perf",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "性能监控",
+    "压力测试",
+    "网络基准测试",
+    "进程监控"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4373,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 73,
+   "path": "linux/ssh.md",
+   "title": "ssh",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "端口转发",
+    "内网穿透",
+    "隧道配置",
+    "远程访问"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2466,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 74,
+   "path": "linux/tmux.md",
+   "title": "tmux",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "终端复用",
+    "快捷键",
+    "会话管理",
+    "分屏操作"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6296,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 75,
+   "path": "linux/ubuntu.md",
+   "title": "ubuntu",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "软件源配置",
+    "网卡绑定",
+    "静态IP配置",
+    "DNS配置"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2082,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 76,
+   "path": "linux/vi.md",
+   "title": "vi",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "文本查找",
+    "光标移动",
+    "复制粘贴",
+    "文本替换"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4973,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 77,
+   "path": "linux/zsh.md",
+   "title": "zsh",
+   "type": "",
+   "subject": "",
+   "topic": "linux",
+   "tags": [
+    "Shell配置",
+    "oh-my-zsh",
+    "别名配置",
+    "启动文件"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1109,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 78,
+   "path": "macos/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "macos",
+   "tags": [
+    "brew 换源",
+    "中文手册",
+    "启动盘制作",
+    "NTFS 挂载"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5183,
+   "fmt": "md",
+   "degree": 3
+  },
+  {
+   "id": 79,
+   "path": "macos/install-brew.sh",
+   "title": "install-brew",
+   "type": "",
+   "subject": "",
+   "topic": "macos",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1749,
+   "fmt": "其他",
+   "degree": 3
+  },
+  {
+   "id": 80,
+   "path": "macos/keys.md",
+   "title": "keys",
+   "type": "",
+   "subject": "",
+   "topic": "macos",
+   "tags": [
+    "快捷键",
+    "截屏操作",
+    "文件管理"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1882,
+   "fmt": "md",
+   "degree": 3
+  },
+  {
+   "id": 81,
+   "path": "macos/macos.md",
+   "title": "macos",
+   "type": "",
+   "subject": "",
+   "topic": "macos",
+   "tags": [
+    "brew 换源",
+    "中文手册",
+    "乱码修复",
+    "启动盘制作"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2966,
+   "fmt": "md",
+   "degree": 3
+  },
+  {
+   "id": 82,
+   "path": "mysql/\bREADME.md",
+   "title": "\bREADME",
+   "type": "",
+   "subject": "",
+   "topic": "mysql",
+   "tags": [
+    "SQL 手册",
+    "入门指南"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 720,
+   "fmt": "md",
+   "degree": 4
+  },
+  {
+   "id": 83,
+   "path": "mysql/alert_chartset.md",
+   "title": "alert_chartset",
+   "type": "",
+   "subject": "",
+   "topic": "mysql",
+   "tags": [
+    "字符集",
+    "utf8mb4",
+    "编码转换"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 986,
+   "fmt": "md",
+   "degree": 4
+  },
+  {
+   "id": 84,
+   "path": "mysql/clone_table.md",
+   "title": "clone_table",
+   "type": "",
+   "subject": "",
+   "topic": "mysql",
+   "tags": [
+    "复制表",
+    "表结构",
+    "数据克隆"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 204,
+   "fmt": "md",
+   "degree": 4
+  },
+  {
+   "id": 85,
+   "path": "mysql/create_database.md",
+   "title": "create_database",
+   "type": "",
+   "subject": "",
+   "topic": "mysql",
+   "tags": [
+    "创建用户",
+    "权限授权",
+    "用户管理"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2688,
+   "fmt": "md",
+   "degree": 4
+  },
+  {
+   "id": 86,
+   "path": "mysql/variables.md",
+   "title": "variables",
+   "type": "",
+   "subject": "",
+   "topic": "mysql",
+   "tags": [
+    "系统变量",
+    "变量设置",
+    "会话参数"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 485,
+   "fmt": "md",
+   "degree": 4
+  },
+  {
+   "id": 87,
+   "path": "nextcloud/db.env",
+   "title": "db",
+   "type": "",
+   "subject": "",
+   "topic": "nextcloud",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 63,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 88,
+   "path": "nextcloud/docker-compose.yml",
+   "title": "docker-compose",
+   "type": "",
+   "subject": "",
+   "topic": "nextcloud",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1046,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 89,
+   "path": "nextcloud/web/Dockerfile",
+   "title": "Dockerfile",
+   "type": "",
+   "subject": "",
+   "topic": "web",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 56,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 90,
+   "path": "nextcloud/web/nginx.conf",
+   "title": "nginx",
+   "type": "",
+   "subject": "",
+   "topic": "web",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 7357,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 91,
+   "path": "nginx/LVS.md",
+   "title": "LVS",
+   "type": "",
+   "subject": "",
+   "topic": "nginx",
+   "tags": [
+    "高可用集群",
+    "keepalived",
+    "DR模式",
+    "ipvsadm",
+    "负载均衡"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9601,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 92,
+   "path": "nginx/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "nginx",
+   "tags": [
+    "目录索引",
+    "文档导航"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 94,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 93,
+   "path": "nginx/acme.yml",
+   "title": "acme",
+   "type": "",
+   "subject": "",
+   "topic": "nginx",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1468,
+   "fmt": "其他",
+   "degree": 5
+  },
+  {
+   "id": 94,
+   "path": "nginx/keepalived+nginx.md",
+   "title": "keepalived+nginx",
+   "type": "",
+   "subject": "",
+   "topic": "nginx",
+   "tags": [
+    "高可用集群",
+    "双机热备",
+    "VIP漂移",
+    "健康检查",
+    "nginx_check脚本"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6593,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 95,
+   "path": "nginx/nginx.conf",
+   "title": "nginx",
+   "type": "",
+   "subject": "",
+   "topic": "nginx",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 771,
+   "fmt": "其他",
+   "degree": 5
+  },
+  {
+   "id": 96,
+   "path": "nginx/nginx.md",
+   "title": "nginx",
+   "type": "",
+   "subject": "",
+   "topic": "nginx",
+   "tags": [
+    "tengine编译",
+    "性能优化",
+    "内核参数",
+    "日志统计",
+    "访问日志分析"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 10199,
+   "fmt": "md",
+   "degree": 5
+  },
+  {
+   "id": 97,
+   "path": "plans/2026-05-31-claude-code-comic-plan.md",
+   "title": "2026-05-31-claude-code-comic-plan",
+   "type": "",
+   "subject": "",
+   "topic": "plans",
+   "tags": [
+    "知识漫画",
+    "实现计划",
+    "baoyu-comic",
+    "Claude Code入门"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 29013,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 98,
+   "path": "python/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "python",
+   "tags": [
+    "pip 配置",
+    "阿里云镜像",
+    "镜像源"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 265,
+   "fmt": "md",
+   "degree": 1
+  },
+  {
+   "id": 99,
+   "path": "python/requirements.txt",
+   "title": "requirements",
+   "type": "",
+   "subject": "",
+   "topic": "python",
+   "tags": [
+    "依赖清单",
+    "PDM 生成",
+    "版本锁定"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 762,
+   "fmt": "md",
+   "degree": 1
+  },
+  {
+   "id": 100,
+   "path": "python/src/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "src",
+   "tags": [
+    "包说明",
+    "示例项目",
+    "项目入口"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 18,
+   "fmt": "md",
+   "degree": 7
+  },
+  {
+   "id": 101,
+   "path": "python/src/bluefin/client.py",
+   "title": "client",
+   "type": "",
+   "subject": "",
+   "topic": "bluefin",
+   "tags": [
+    "Sui 钱包",
+    "私钥派生",
+    "链上交易"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1933,
+   "fmt": "代码",
+   "degree": 0
+  },
+  {
+   "id": 102,
+   "path": "python/src/concurrency/asyncio_executor_process.py",
+   "title": "asyncio_executor_process",
+   "type": "",
+   "subject": "",
+   "topic": "concurrency",
+   "tags": [
+    "进程池",
+    "run_in_executor",
+    "阻塞任务",
+    "事件循环"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1158,
+   "fmt": "代码",
+   "degree": 5
+  },
+  {
+   "id": 103,
+   "path": "python/src/concurrency/asyncio_executor_thread.py",
+   "title": "asyncio_executor_thread",
+   "type": "",
+   "subject": "",
+   "topic": "concurrency",
+   "tags": [
+    "线程池",
+    "run_in_executor",
+    "阻塞任务",
+    "事件循环"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1159,
+   "fmt": "代码",
+   "degree": 5
+  },
+  {
+   "id": 104,
+   "path": "python/src/concurrency/futures_process_pool_broken.py",
+   "title": "futures_process_pool_broken",
+   "type": "",
+   "subject": "",
+   "topic": "concurrency",
+   "tags": [
+    "BrokenProcessPool",
+    "进程池异常",
+    "SIGHUP",
+    "worker崩溃"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 574,
+   "fmt": "代码",
+   "degree": 5
+  },
+  {
+   "id": 105,
+   "path": "python/src/concurrency/futures_process_pool_map.py",
+   "title": "futures_process_pool_map",
+   "type": "",
+   "subject": "",
+   "topic": "concurrency",
+   "tags": [
+    "进程池",
+    "map方法",
+    "多进程PID"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 295,
+   "fmt": "代码",
+   "degree": 5
+  },
+  {
+   "id": 106,
+   "path": "python/src/concurrency/futures_thread_pool_map.py",
+   "title": "futures_thread_pool_map",
+   "type": "",
+   "subject": "",
+   "topic": "concurrency",
+   "tags": [
+    "线程池",
+    "map方法",
+    "惰性迭代"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 545,
+   "fmt": "代码",
+   "degree": 5
+  },
+  {
+   "id": 107,
+   "path": "python/src/concurrency/test.py",
+   "title": "test",
+   "type": "",
+   "subject": "",
+   "topic": "concurrency",
+   "tags": [
+    "定时短信",
+    "threading.Timer",
+    "asyncio示例"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 648,
+   "fmt": "代码",
+   "degree": 5
+  },
+  {
+   "id": 108,
+   "path": "python/src/fmz/exchange.py",
+   "title": "exchange",
+   "type": "",
+   "subject": "",
+   "topic": "fmz",
+   "tags": [
+    "交易所适配",
+    "HTTP服务",
+    "通用协议",
+    "CoinPark"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 14720,
+   "fmt": "代码",
+   "degree": 3
+  },
+  {
+   "id": 109,
+   "path": "python/src/gitlab/cleanup.py",
+   "title": "cleanup",
+   "type": "",
+   "subject": "",
+   "topic": "gitlab",
+   "tags": [
+    "镜像清理",
+    "GitLab API",
+    "容器仓库"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1067,
+   "fmt": "代码",
+   "degree": 0
+  },
+  {
+   "id": 110,
+   "path": "python/src/images/SquareToCircle.png",
+   "title": "SquareToCircle",
+   "type": "",
+   "subject": "",
+   "topic": "images",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 24401,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 111,
+   "path": "python/src/ocr/akaocr_test.py",
+   "title": "akaocr_test",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [
+    "akaocr",
+    "文字检测",
+    "测试脚本"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 695,
+   "fmt": "代码",
+   "degree": 8
+  },
+  {
+   "id": 112,
+   "path": "python/src/ocr/common.onnx",
+   "title": "common",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 13606192,
+   "fmt": "其他",
+   "degree": 8
+  },
+  {
+   "id": 113,
+   "path": "python/src/ocr/ddddocr_test.py",
+   "title": "ddddocr_test",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [
+    "ddddocr",
+    "验证码识别",
+    "字符集限定",
+    "测试脚本"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1323,
+   "fmt": "代码",
+   "degree": 8
+  },
+  {
+   "id": 114,
+   "path": "python/src/ocr/easyocr_test.py",
+   "title": "easyocr_test",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [
+    "easyocr",
+    "文字识别",
+    "图像预处理",
+    "测试脚本"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 801,
+   "fmt": "代码",
+   "degree": 8
+  },
+  {
+   "id": 115,
+   "path": "python/src/ocr/ocr.py",
+   "title": "ocr",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [
+    "pytesseract",
+    "验证码识别",
+    "二值化",
+    "图像去噪",
+    "灰度处理"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3718,
+   "fmt": "代码",
+   "degree": 8
+  },
+  {
+   "id": 116,
+   "path": "python/src/ocr/ocrlib.py",
+   "title": "ocrlib",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [
+    "onnxruntime",
+    "CPU/GPU推理",
+    "图片预处理",
+    "字符分类"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 157607,
+   "fmt": "代码",
+   "degree": 8
+  },
+  {
+   "id": 117,
+   "path": "python/src/ocr/orclib_test.py",
+   "title": "orclib_test",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [
+    "识别测试",
+    "onnx模型",
+    "图片文字提取"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 492,
+   "fmt": "代码",
+   "degree": 8
+  },
+  {
+   "id": 118,
+   "path": "python/src/ocr/ppocr_test.py",
+   "title": "ppocr_test",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [
+    "PaddleOCR",
+    "文本检测",
+    "单行识别",
+    "批量识别"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 698,
+   "fmt": "代码",
+   "degree": 8
+  },
+  {
+   "id": 119,
+   "path": "python/src/ocr/pytesseract_test.py",
+   "title": "pytesseract_test",
+   "type": "",
+   "subject": "",
+   "topic": "ocr",
+   "tags": [
+    "Tesseract",
+    "OpenCV预处理",
+    "图像二值化",
+    "灰度转换"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 475,
+   "fmt": "代码",
+   "degree": 8
+  },
+  {
+   "id": 120,
+   "path": "python/src/ocr/testdata/WechatIMG400.jpg",
+   "title": "WechatIMG400",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2136,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 121,
+   "path": "python/src/ocr/testdata/WechatIMG401.jpg",
+   "title": "WechatIMG401",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9277,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 122,
+   "path": "python/src/ocr/testdata/WechatIMG402.jpg",
+   "title": "WechatIMG402",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9663,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 123,
+   "path": "python/src/ocr/testdata/bilingual.png",
+   "title": "bilingual",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 110120,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 124,
+   "path": "python/src/ocr/testdata/image.png",
+   "title": "image",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9952,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 125,
+   "path": "python/src/ocr/testdata/image1.png",
+   "title": "image1",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9729,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 126,
+   "path": "python/src/ocr/testdata/image2.png",
+   "title": "image2",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9569,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 127,
+   "path": "python/src/ocr/testdata/image3.png",
+   "title": "image3",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 8933,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 128,
+   "path": "python/src/ocr/testdata/image4.png",
+   "title": "image4",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9500,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 129,
+   "path": "python/src/ocr/testdata/image5.png",
+   "title": "image5",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9500,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 130,
+   "path": "python/src/ocr/testdata/p1.png",
+   "title": "p1",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 10087,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 131,
+   "path": "python/src/ocr/testdata/p2.png",
+   "title": "p2",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 9235,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 132,
+   "path": "python/src/ocr/testdata/p3.png",
+   "title": "p3",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 7298,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 133,
+   "path": "python/src/onnx/test.py",
+   "title": "test",
+   "type": "",
+   "subject": "",
+   "topic": "onnx",
+   "tags": [
+    "onnxruntime",
+    "设备探测",
+    "运行环境检查"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 126,
+   "fmt": "代码",
+   "degree": 0
+  },
+  {
+   "id": 134,
+   "path": "python/src/pdf/OCRMyPDF_test.py",
+   "title": "OCRMyPDF_test",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "扫描件识别",
+    "文本层",
+    "纠偏"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 197,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 135,
+   "path": "python/src/pdf/ddddocr_test.py",
+   "title": "ddddocr_test",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "ddddocr",
+    "轻量识别",
+    "图片转文字"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 380,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 136,
+   "path": "python/src/pdf/easyocr_test.py",
+   "title": "easyocr_test",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "easyocr",
+    "中英混合",
+    "置信度输出"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 374,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 137,
+   "path": "python/src/pdf/keras_ocr_test.py",
+   "title": "keras_ocr_test",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "keras_ocr",
+    "文本检测",
+    "边界框"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 436,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 138,
+   "path": "python/src/pdf/llama.py",
+   "title": "llama",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "视觉模型",
+    "OCR后处理",
+    "Markdown转换",
+    "ollama"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1965,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 139,
+   "path": "python/src/pdf/main.py",
+   "title": "main",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "PDF转图片",
+    "pdfplumber",
+    "银行流水",
+    "表格提取"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2457,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 140,
+   "path": "python/src/pdf/mupdf.py",
+   "title": "mupdf",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "PDF转Markdown",
+    "pymupdf4llm",
+    "文本提取"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 259,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 141,
+   "path": "python/src/pdf/output.md",
+   "title": "output",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "转换输出",
+    "空白文档"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 217,
+   "fmt": "md",
+   "degree": 11
+  },
+  {
+   "id": 142,
+   "path": "python/src/pdf/pdm.lock",
+   "title": "pdm",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 79116,
+   "fmt": "其他",
+   "degree": 11
+  },
+  {
+   "id": 143,
+   "path": "python/src/pdf/pyproject.toml",
+   "title": "pyproject",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 638,
+   "fmt": "其他",
+   "degree": 11
+  },
+  {
+   "id": 144,
+   "path": "python/src/pdf/pytesseract_test.py",
+   "title": "pytesseract_test",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "OCR识别",
+    "pytesseract",
+    "银行流水",
+    "正则解析"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 950,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 145,
+   "path": "python/src/pdf/results/surya/page_10/results.json",
+   "title": "results",
+   "type": "",
+   "subject": "",
+   "topic": "page_10",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 214589,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 146,
+   "path": "python/src/pdf/sa.py",
+   "title": "sa",
+   "type": "",
+   "subject": "",
+   "topic": "pdf",
+   "tags": [
+    "surya",
+    "OCR识别",
+    "多语言识别",
+    "表格识别"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1009,
+   "fmt": "代码",
+   "degree": 11
+  },
+  {
+   "id": 147,
+   "path": "python/src/pdf/testdata/jh.pdf",
+   "title": "jh",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 15390777,
+   "fmt": "pdf",
+   "degree": 0
+  },
+  {
+   "id": 148,
+   "path": "python/src/pdf/testdata/page_1.png",
+   "title": "page_1",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 595261,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 149,
+   "path": "python/src/pdf/testdata/page_10.png",
+   "title": "page_10",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 652149,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 150,
+   "path": "python/src/pdf/testdata/page_11.png",
+   "title": "page_11",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 656418,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 151,
+   "path": "python/src/pdf/testdata/page_12.png",
+   "title": "page_12",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 649548,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 152,
+   "path": "python/src/pdf/testdata/page_13.png",
+   "title": "page_13",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 623077,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 153,
+   "path": "python/src/pdf/testdata/page_14.png",
+   "title": "page_14",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 648757,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 154,
+   "path": "python/src/pdf/testdata/page_15.png",
+   "title": "page_15",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 642349,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 155,
+   "path": "python/src/pdf/testdata/page_16.png",
+   "title": "page_16",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 652271,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 156,
+   "path": "python/src/pdf/testdata/page_17.png",
+   "title": "page_17",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 645120,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 157,
+   "path": "python/src/pdf/testdata/page_18.png",
+   "title": "page_18",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 641660,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 158,
+   "path": "python/src/pdf/testdata/page_19.png",
+   "title": "page_19",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 631790,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 159,
+   "path": "python/src/pdf/testdata/page_2.png",
+   "title": "page_2",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 557472,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 160,
+   "path": "python/src/pdf/testdata/page_20.png",
+   "title": "page_20",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 648464,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 161,
+   "path": "python/src/pdf/testdata/page_21.png",
+   "title": "page_21",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 648563,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 162,
+   "path": "python/src/pdf/testdata/page_22.png",
+   "title": "page_22",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 646688,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 163,
+   "path": "python/src/pdf/testdata/page_23.png",
+   "title": "page_23",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 648989,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 164,
+   "path": "python/src/pdf/testdata/page_24.png",
+   "title": "page_24",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 613523,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 165,
+   "path": "python/src/pdf/testdata/page_25.png",
+   "title": "page_25",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 588710,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 166,
+   "path": "python/src/pdf/testdata/page_26.png",
+   "title": "page_26",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 629986,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 167,
+   "path": "python/src/pdf/testdata/page_27.png",
+   "title": "page_27",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 625714,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 168,
+   "path": "python/src/pdf/testdata/page_28.png",
+   "title": "page_28",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 629286,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 169,
+   "path": "python/src/pdf/testdata/page_29.png",
+   "title": "page_29",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 636083,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 170,
+   "path": "python/src/pdf/testdata/page_3.png",
+   "title": "page_3",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 611706,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 171,
+   "path": "python/src/pdf/testdata/page_30.png",
+   "title": "page_30",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 613528,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 172,
+   "path": "python/src/pdf/testdata/page_31.png",
+   "title": "page_31",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 469844,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 173,
+   "path": "python/src/pdf/testdata/page_4.png",
+   "title": "page_4",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 619664,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 174,
+   "path": "python/src/pdf/testdata/page_5.png",
+   "title": "page_5",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 605247,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 175,
+   "path": "python/src/pdf/testdata/page_6.png",
+   "title": "page_6",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 624158,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 176,
+   "path": "python/src/pdf/testdata/page_7.png",
+   "title": "page_7",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 656903,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 177,
+   "path": "python/src/pdf/testdata/page_8.png",
+   "title": "page_8",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 635532,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 178,
+   "path": "python/src/pdf/testdata/page_9.png",
+   "title": "page_9",
+   "type": "",
+   "subject": "",
+   "topic": "testdata",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 672423,
+   "fmt": "图片",
+   "degree": 0
+  },
+  {
+   "id": 179,
+   "path": "python/src/prefect/flow1.py",
+   "title": "flow1",
+   "type": "",
+   "subject": "",
+   "topic": "prefect",
+   "tags": [
+    "工作流编排",
+    "GitHub API",
+    "任务重试",
+    "星标统计"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1127,
+   "fmt": "代码",
+   "degree": 0
+  },
+  {
+   "id": 180,
+   "path": "python/src/selenium/Dockerfile",
+   "title": "Dockerfile",
+   "type": "",
+   "subject": "",
+   "topic": "selenium",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 439,
+   "fmt": "其他",
+   "degree": 7
+  },
+  {
+   "id": 181,
+   "path": "python/src/selenium/deploy/docker-compose-grid.yml",
+   "title": "docker-compose-grid",
+   "type": "",
+   "subject": "",
+   "topic": "deploy",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 881,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 182,
+   "path": "python/src/selenium/deploy/docker-compose.yml",
+   "title": "docker-compose",
+   "type": "",
+   "subject": "",
+   "topic": "deploy",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1202,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 183,
+   "path": "python/src/selenium/deploy/kube.yml",
+   "title": "kube",
+   "type": "",
+   "subject": "",
+   "topic": "deploy",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1097,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 184,
+   "path": "python/src/selenium/main.py",
+   "title": "main",
+   "type": "",
+   "subject": "",
+   "topic": "selenium",
+   "tags": [
+    "自动投票",
+    "验证码识别",
+    "OCR 识别",
+    "多线程",
+    "网页自动化"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 8964,
+   "fmt": "代码",
+   "degree": 7
+  },
+  {
+   "id": 185,
+   "path": "python/src/selenium/nc.py",
+   "title": "nc",
+   "type": "",
+   "subject": "",
+   "topic": "selenium",
+   "tags": [
+    "滑块验证",
+    "模拟拖拽",
+    "人机校验"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1404,
+   "fmt": "代码",
+   "degree": 7
+  },
+  {
+   "id": 186,
+   "path": "python/src/selenium/orclib_test.py",
+   "title": "orclib_test",
+   "type": "",
+   "subject": "",
+   "topic": "selenium",
+   "tags": [
+    "OCR识别",
+    "ddddocr",
+    "滑块缺口匹配",
+    "图片文字提取"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 728,
+   "fmt": "代码",
+   "degree": 7
+  },
+  {
+   "id": 187,
+   "path": "python/src/selenium/requirements.txt",
+   "title": "requirements",
+   "type": "",
+   "subject": "",
+   "topic": "selenium",
+   "tags": [
+    "依赖清单",
+    "PDM管理",
+    "Python包依赖"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 728,
+   "fmt": "md",
+   "degree": 7
+  },
+  {
+   "id": 188,
+   "path": "python/src/selenium/slide_captcha.py",
+   "title": "slide_captcha",
+   "type": "",
+   "subject": "",
+   "topic": "selenium",
+   "tags": [
+    "滑块验证码",
+    "缺口定位",
+    "边缘检测",
+    "模拟拖动"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5167,
+   "fmt": "代码",
+   "degree": 7
+  },
+  {
+   "id": 189,
+   "path": "python/src/selenium/slide_verify.py",
+   "title": "slide_verify",
+   "type": "",
+   "subject": "",
+   "topic": "selenium",
+   "tags": [
+    "滑块验证码",
+    "JS注入",
+    "前端组件调试"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2869,
+   "fmt": "代码",
+   "degree": 7
+  },
+  {
+   "id": 190,
+   "path": "python/src/selenium/test.py",
+   "title": "test",
+   "type": "",
+   "subject": "",
+   "topic": "selenium",
+   "tags": [
+    "远程浏览器",
+    "Selenium Grid",
+    "WebDriver连接"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 607,
+   "fmt": "代码",
+   "degree": 7
+  },
+  {
+   "id": 191,
+   "path": "python/src/selenium.zip",
+   "title": "selenium",
+   "type": "",
+   "subject": "",
+   "topic": "src",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 53919,
+   "fmt": "其他",
+   "degree": 7
+  },
+  {
+   "id": 192,
+   "path": "python/src/spider/downloads/2025-01-27_附件：国家税务总局厦门市税务局2025年1月欠税公告清册.xlsx",
+   "title": "2025-01-27_附件：国家税务总局厦门市税务局2025年1月欠税公告清册",
+   "type": "",
+   "subject": "",
+   "topic": "downloads",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1102735,
+   "fmt": "excel",
+   "degree": 1
+  },
+  {
+   "id": 193,
+   "path": "python/src/spider/downloads/2025-02-21_国家税务总局厦门市税务局2025年2月欠税公告清册.xlsx",
+   "title": "2025-02-21_国家税务总局厦门市税务局2025年2月欠税公告清册",
+   "type": "",
+   "subject": "",
+   "topic": "downloads",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 51627,
+   "fmt": "excel",
+   "degree": 1
+  },
+  {
+   "id": 194,
+   "path": "python/src/spider/main.py",
+   "title": "main",
+   "type": "",
+   "subject": "",
+   "topic": "spider",
+   "tags": [
+    "欠税公告抓取",
+    "厦门税务",
+    "PDF下载校验",
+    "BeautifulSoup解析"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4611,
+   "fmt": "代码",
+   "degree": 2
+  },
+  {
+   "id": 195,
+   "path": "python/src/spider/pyproject.toml",
+   "title": "pyproject",
+   "type": "",
+   "subject": "",
+   "topic": "spider",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 235,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 196,
+   "path": "python/src/spider/uv.lock",
+   "title": "uv",
+   "type": "",
+   "subject": "",
+   "topic": "spider",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 29209,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 197,
+   "path": "python/src/start.py",
+   "title": "start",
+   "type": "",
+   "subject": "",
+   "topic": "src",
+   "tags": [
+    "manim动画",
+    "图形变换",
+    "动画演示"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 429,
+   "fmt": "代码",
+   "degree": 7
+  },
+  {
+   "id": 198,
+   "path": "python/src/tests/__init__.py",
+   "title": "__init__",
+   "type": "",
+   "subject": "",
+   "topic": "tests",
+   "tags": [
+    "日期计算",
+    "datetime",
+    "闰年处理"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 333,
+   "fmt": "代码",
+   "degree": 2
+  },
+  {
+   "id": 199,
+   "path": "python/src/tests/tax.py",
+   "title": "tax",
+   "type": "",
+   "subject": "",
+   "topic": "tests",
+   "tags": [
+    "个税计算",
+    "累进税率",
+    "工资计算"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 486,
+   "fmt": "代码",
+   "degree": 2
+  },
+  {
+   "id": 200,
+   "path": "python/src/tests/tempCodeRunnerFile.py",
+   "title": "tempCodeRunnerFile",
+   "type": "",
+   "subject": "",
+   "topic": "tests",
+   "tags": [
+    "临时脚本",
+    "简单算式"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 25,
+   "fmt": "代码",
+   "degree": 2
+  },
+  {
+   "id": 201,
+   "path": "python/src/tou/tou.py",
+   "title": "tou",
+   "type": "",
+   "subject": "",
+   "topic": "tou",
+   "tags": [
+    "验证码识别",
+    "OCR",
+    "图像预处理",
+    "pytesseract"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5934,
+   "fmt": "代码",
+   "degree": 0
+  },
+  {
+   "id": 202,
+   "path": "rabbitmq/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "rabbitmq",
+   "tags": [
+    "docker 部署",
+    "三节点集群",
+    "内存节点",
+    "Erlang Cookie"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3099,
+   "fmt": "md",
+   "degree": 1
+  },
+  {
+   "id": 203,
+   "path": "rabbitmq/docker-compose.yaml",
+   "title": "docker-compose",
+   "type": "",
+   "subject": "",
+   "topic": "rabbitmq",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 315,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 204,
+   "path": "rancher/docker-compose.yaml",
+   "title": "docker-compose",
+   "type": "",
+   "subject": "",
+   "topic": "rancher",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 238,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 205,
+   "path": "redis/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "redis",
+   "tags": [
+    "集群搭建",
+    "三主三从",
+    "docker 部署"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1260,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 206,
+   "path": "resources/librehat-shadowsocks-epel-7.repo",
+   "title": "librehat-shadowsocks-epel-7",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 346,
+   "fmt": "其他",
+   "degree": 8
+  },
+  {
+   "id": 207,
+   "path": "resources/lvs_real_server.sh",
+   "title": "lvs_real_server",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 828,
+   "fmt": "其他",
+   "degree": 8
+  },
+  {
+   "id": 208,
+   "path": "resources/netfilter.jpeg",
+   "title": "netfilter",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 91025,
+   "fmt": "图片",
+   "degree": 8
+  },
+  {
+   "id": 209,
+   "path": "resources/tengine-2.2.0-centos6.tar.gz",
+   "title": "tengine-2.2.0-centos6.tar",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4346472,
+   "fmt": "其他",
+   "degree": 8
+  },
+  {
+   "id": 210,
+   "path": "resources/tengine-2.2.0-centos7-with-jemalloc.tar.gz",
+   "title": "tengine-2.2.0-centos7-with-jemalloc.tar",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5369126,
+   "fmt": "其他",
+   "degree": 8
+  },
+  {
+   "id": 211,
+   "path": "resources/tengine-2.2.0-centos7.tar.gz",
+   "title": "tengine-2.2.0-centos7.tar",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4431583,
+   "fmt": "其他",
+   "degree": 8
+  },
+  {
+   "id": 212,
+   "path": "resources/tengine-2.2.2-centos7.tar.gz",
+   "title": "tengine-2.2.2-centos7.tar",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4580430,
+   "fmt": "其他",
+   "degree": 8
+  },
+  {
+   "id": 213,
+   "path": "resources/tengine-2.3.3-centos7.tar.gz",
+   "title": "tengine-2.3.3-centos7.tar",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6285798,
+   "fmt": "其他",
+   "degree": 8
+  },
+  {
+   "id": 214,
+   "path": "resources/vim.png",
+   "title": "vim",
+   "type": "",
+   "subject": "",
+   "topic": "resources",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 242379,
+   "fmt": "图片",
+   "degree": 8
+  },
+  {
+   "id": 215,
+   "path": "rocketmq/broker.conf",
+   "title": "broker",
+   "type": "",
+   "subject": "",
+   "topic": "rocketmq",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 237,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 216,
+   "path": "rocketmq/composev1.yml",
+   "title": "composev1",
+   "type": "",
+   "subject": "",
+   "topic": "rocketmq",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1113,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 217,
+   "path": "rocketmq/docker-compose.yaml",
+   "title": "docker-compose",
+   "type": "",
+   "subject": "",
+   "topic": "rocketmq",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1041,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 218,
+   "path": "rocketmq/rmq-proxy.json",
+   "title": "rmq-proxy",
+   "type": "",
+   "subject": "",
+   "topic": "rocketmq",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 77,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 219,
+   "path": "rocketmq/services.yml",
+   "title": "services",
+   "type": "",
+   "subject": "",
+   "topic": "rocketmq",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1119,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 220,
+   "path": "rocketmq/store/abort",
+   "title": "abort",
+   "type": "",
+   "subject": "",
+   "topic": "store",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 221,
+   "path": "rocketmq/store/abort.bak",
+   "title": "abort",
+   "type": "",
+   "subject": "",
+   "topic": "store",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 222,
+   "path": "rocketmq/store/checkpoint",
+   "title": "checkpoint",
+   "type": "",
+   "subject": "",
+   "topic": "store",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4096,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 223,
+   "path": "rocketmq/store/compaction/position-checkpoint",
+   "title": "position-checkpoint",
+   "type": "",
+   "subject": "",
+   "topic": "compaction",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 39,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 224,
+   "path": "rocketmq/store/compaction/position-checkpoint.bak",
+   "title": "position-checkpoint",
+   "type": "",
+   "subject": "",
+   "topic": "compaction",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 39,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 225,
+   "path": "rocketmq/store/config/consumerFilter.json",
+   "title": "consumerFilter",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 27,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 226,
+   "path": "rocketmq/store/config/consumerFilter.json.bak",
+   "title": "consumerFilter.json",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 27,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 227,
+   "path": "rocketmq/store/config/consumerOffset.json",
+   "title": "consumerOffset",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 126,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 228,
+   "path": "rocketmq/store/config/consumerOffset.json.bak",
+   "title": "consumerOffset.json",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 126,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 229,
+   "path": "rocketmq/store/config/consumerOrderInfo.json",
+   "title": "consumerOrderInfo",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 15,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 230,
+   "path": "rocketmq/store/config/consumerOrderInfo.json.bak",
+   "title": "consumerOrderInfo.json",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 15,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 231,
+   "path": "rocketmq/store/config/delayOffset.json",
+   "title": "delayOffset",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 105,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 232,
+   "path": "rocketmq/store/config/delayOffset.json.bak",
+   "title": "delayOffset.json",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 105,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 233,
+   "path": "rocketmq/store/config/subscriptionGroup.json",
+   "title": "subscriptionGroup",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3787,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 234,
+   "path": "rocketmq/store/config/subscriptionGroup.json.bak",
+   "title": "subscriptionGroup.json",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3787,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 235,
+   "path": "rocketmq/store/config/timercheck",
+   "title": "timercheck",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4096,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 236,
+   "path": "rocketmq/store/config/timermetrics",
+   "title": "timermetrics",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 89,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 237,
+   "path": "rocketmq/store/config/timermetrics.bak",
+   "title": "timermetrics",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 89,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 238,
+   "path": "rocketmq/store/config/topics.json",
+   "title": "topics",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3001,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 239,
+   "path": "rocketmq/store/config/topics.json.bak",
+   "title": "topics.json",
+   "type": "",
+   "subject": "",
+   "topic": "config",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3001,
+   "fmt": "其他",
+   "degree": 14
+  },
+  {
+   "id": 240,
+   "path": "rocketmq/store/lock",
+   "title": "lock",
+   "type": "",
+   "subject": "",
+   "topic": "store",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 241,
+   "path": "rocketmq/store/timerwheel",
+   "title": "timerwheel",
+   "type": "",
+   "subject": "",
+   "topic": "store",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 38707200,
+   "fmt": "其他",
+   "degree": 4
+  },
+  {
+   "id": 242,
+   "path": "ros.md",
+   "title": "ros",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [
+    "路由器系统",
+    "Mikrotik",
+    "虚拟机安装",
+    "DHCP配置"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 453,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 243,
+   "path": "rust/Cargo.lock",
+   "title": "Cargo",
+   "type": "",
+   "subject": "",
+   "topic": "rust",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1920,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 244,
+   "path": "rust/Cargo.toml",
+   "title": "Cargo",
+   "type": "",
+   "subject": "",
+   "topic": "rust",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 188,
+   "fmt": "其他",
+   "degree": 2
+  },
+  {
+   "id": 245,
+   "path": "rust/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "rust",
+   "tags": [
+    "安装指南",
+    "rustup",
+    "macOS 环境"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 77,
+   "fmt": "md",
+   "degree": 2
+  },
+  {
+   "id": 246,
+   "path": "rust/examples/ch02-guessing_game.rs",
+   "title": "ch02-guessing_game",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 949,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 247,
+   "path": "rust/examples/ch04-slices.rs",
+   "title": "ch04-slices",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 296,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 248,
+   "path": "rust/examples/ch05-structs_rectangles.rs",
+   "title": "ch05-structs_rectangles",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1930,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 249,
+   "path": "rust/examples/ch06-enums.rs",
+   "title": "ch06-enums",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1461,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 250,
+   "path": "rust/examples/ch07-mod.rs",
+   "title": "ch07-mod",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 277,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 251,
+   "path": "rust/examples/ch10.rs",
+   "title": "ch10",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 486,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 252,
+   "path": "rust/examples/ch19-macro.rs",
+   "title": "ch19-macro",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 149,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 253,
+   "path": "rust/examples/err.rs",
+   "title": "err",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 618,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 254,
+   "path": "rust/examples/err_ unwrap.rs",
+   "title": "err_ unwrap",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 573,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 255,
+   "path": "rust/examples/err_and_then1.rs",
+   "title": "err_and_then1",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 866,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 256,
+   "path": "rust/examples/err_and_then2.rs",
+   "title": "err_and_then2",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 378,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 257,
+   "path": "rust/examples/err_panic.rs",
+   "title": "err_panic",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 647,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 258,
+   "path": "rust/examples/err_result.rs",
+   "title": "err_result",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1030,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 259,
+   "path": "rust/examples/pkg_self.rs",
+   "title": "pkg_self",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 444,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 260,
+   "path": "rust/examples/pkg_use.rs",
+   "title": "pkg_use",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 613,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 261,
+   "path": "rust/examples/traits.rs",
+   "title": "traits",
+   "type": "",
+   "subject": "",
+   "topic": "examples",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 314,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 262,
+   "path": "rust/minigrep/Cargo.lock",
+   "title": "Cargo",
+   "type": "",
+   "subject": "",
+   "topic": "minigrep",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 152,
+   "fmt": "其他",
+   "degree": 3
+  },
+  {
+   "id": 263,
+   "path": "rust/minigrep/Cargo.toml",
+   "title": "Cargo",
+   "type": "",
+   "subject": "",
+   "topic": "minigrep",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 177,
+   "fmt": "其他",
+   "degree": 3
+  },
+  {
+   "id": 264,
+   "path": "rust/minigrep/output.txt",
+   "title": "output",
+   "type": "",
+   "subject": "",
+   "topic": "minigrep",
+   "tags": [
+    "示例输出",
+    "测试文本"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 48,
+   "fmt": "md",
+   "degree": 3
+  },
+  {
+   "id": 265,
+   "path": "rust/minigrep/poem.txt",
+   "title": "poem",
+   "type": "",
+   "subject": "",
+   "topic": "minigrep",
+   "tags": [
+    "测试文本",
+    "诗歌",
+    "搜索样例"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 221,
+   "fmt": "md",
+   "degree": 3
+  },
+  {
+   "id": 266,
+   "path": "rust/minigrep/src/lib.rs",
+   "title": "lib",
+   "type": "",
+   "subject": "",
+   "topic": "src",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2573,
+   "fmt": "其他",
+   "degree": 7
+  },
+  {
+   "id": 267,
+   "path": "rust/minigrep/src/main.rs",
+   "title": "main",
+   "type": "",
+   "subject": "",
+   "topic": "src",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 742,
+   "fmt": "其他",
+   "degree": 7
+  },
+  {
+   "id": 268,
+   "path": "rust/src/bin/fn.rs",
+   "title": "fn",
+   "type": "",
+   "subject": "",
+   "topic": "bin",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 223,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 269,
+   "path": "rust/src/bin/tempCodeRunnerFile",
+   "title": "tempCodeRunnerFile",
+   "type": "",
+   "subject": "",
+   "topic": "bin",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 416719,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 270,
+   "path": "rust/src/front_of_house/hosting.rs",
+   "title": "hosting",
+   "type": "",
+   "subject": "",
+   "topic": "front_of_house",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 28,
+   "fmt": "其他",
+   "degree": 0
+  },
+  {
+   "id": 271,
+   "path": "rust/src/front_of_house.rs",
+   "title": "front_of_house",
+   "type": "",
+   "subject": "",
+   "topic": "src",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 17,
+   "fmt": "其他",
+   "degree": 7
+  },
+  {
+   "id": 272,
+   "path": "rust/src/lib.rs",
+   "title": "lib",
+   "type": "",
+   "subject": "",
+   "topic": "src",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 237,
+   "fmt": "其他",
+   "degree": 7
+  },
+  {
+   "id": 273,
+   "path": "rust/src/main.rs",
+   "title": "main",
+   "type": "",
+   "subject": "",
+   "topic": "src",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 45,
+   "fmt": "其他",
+   "degree": 7
+  },
+  {
+   "id": 274,
+   "path": "shadowsocks/Shadowsocks.md",
+   "title": "Shadowsocks",
+   "type": "",
+   "subject": "",
+   "topic": "shadowsocks",
+   "tags": [
+    "shadowsocks-libev",
+    "sysctl调优",
+    "局域网网关",
+    "gfwlist分流"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6851,
+   "fmt": "md",
+   "degree": 1
+  },
+  {
+   "id": 275,
+   "path": "shadowsocks/iptables-rule.sh",
+   "title": "iptables-rule",
+   "type": "",
+   "subject": "",
+   "topic": "shadowsocks",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2094,
+   "fmt": "其他",
+   "degree": 1
+  },
+  {
+   "id": 276,
+   "path": "specs/2026-05-31-claude-code-comic-design.md",
+   "title": "2026-05-31-claude-code-comic-design",
+   "type": "",
+   "subject": "",
+   "topic": "specs",
+   "tags": [
+    "知识漫画",
+    "入门心智模型",
+    "分镜设计",
+    "角色设定"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6606,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 277,
+   "path": "tcpdump.md",
+   "title": "tcpdump",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [
+    "网络抓包",
+    "流量分析"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 11,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 278,
+   "path": "test.md",
+   "title": "test",
+   "type": "",
+   "subject": "",
+   "topic": "",
+   "tags": [
+    "性能测试",
+    "内核参数调优",
+    "压测工具",
+    "wrk脚本"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 10640,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 279,
+   "path": "v2ray/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "v2ray",
+   "tags": [
+    "代理配置",
+    "服务端部署",
+    "systemd服务",
+    "vmess协议"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1670,
+   "fmt": "md",
+   "degree": 0
+  },
+  {
+   "id": 280,
+   "path": "vpn/README.md",
+   "title": "README",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [
+    "证书管理",
+    "客户端证书",
+    "批量脚本",
+    "证书撤销",
+    "easy-rsa"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 7734,
+   "fmt": "md",
+   "degree": 12
+  },
+  {
+   "id": 281,
+   "path": "vpn/check_ovpn_batch.sh",
+   "title": "check_ovpn_batch",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 1453,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 282,
+   "path": "vpn/check_ovpn_key.sh",
+   "title": "check_ovpn_key",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 2164,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 283,
+   "path": "vpn/ipsec.md",
+   "title": "ipsec",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [
+    "strongSwan",
+    "IKEv2",
+    "站点互联",
+    "swanctl",
+    "NAT转发"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 5786,
+   "fmt": "md",
+   "degree": 12
+  },
+  {
+   "id": 284,
+   "path": "vpn/openvpn.md",
+   "title": "openvpn",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [
+    "服务端配置",
+    "证书签发",
+    "日志轮转",
+    "故障排查",
+    "客户端配置"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 8551,
+   "fmt": "md",
+   "degree": 12
+  },
+  {
+   "id": 285,
+   "path": "vpn/openvpn.sh",
+   "title": "openvpn",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 12109,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 286,
+   "path": "vpn/openvpn_aws.sh",
+   "title": "openvpn_aws",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3451,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 287,
+   "path": "vpn/openvpn_batch.sh",
+   "title": "openvpn_batch",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 6795,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 288,
+   "path": "vpn/openvpn_client.sh",
+   "title": "openvpn_client",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4594,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 289,
+   "path": "vpn/rebuild_unencrypted.sh",
+   "title": "rebuild_unencrypted",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 7051,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 290,
+   "path": "vpn/revoke_users.sh",
+   "title": "revoke_users",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 4020,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 291,
+   "path": "vpn/ssh-tunnel-openvpn.md",
+   "title": "ssh-tunnel-openvpn",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [
+    "SSH隧道",
+    "端口转发",
+    "SOCKS代理",
+    "绕过UDP限制",
+    "自动重连"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 8792,
+   "fmt": "md",
+   "degree": 12
+  },
+  {
+   "id": 292,
+   "path": "vpn/test_openvpn_batch.sh",
+   "title": "test_openvpn_batch",
+   "type": "",
+   "subject": "",
+   "topic": "vpn",
+   "tags": [],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 3690,
+   "fmt": "其他",
+   "degree": 12
+  },
+  {
+   "id": 293,
+   "path": "windows/windows.bat.md",
+   "title": "windows.bat",
+   "type": "",
+   "subject": "",
+   "topic": "windows",
+   "tags": [
+    "端口查看",
+    "netstat",
+    "命令行"
+   ],
+   "synopsis": "[自动登记]",
+   "sensitive": false,
+   "bytes": 66,
+   "fmt": "md",
+   "degree": 0
+  }
+ ],
+ "edges": [
+  {
+   "from": 3,
+   "to": 4,
+   "reason": "topic"
+  },
+  {
+   "from": 3,
+   "to": 16,
+   "reason": "topic"
+  },
+  {
+   "from": 3,
+   "to": 17,
+   "reason": "topic"
+  },
+  {
+   "from": 4,
+   "to": 16,
+   "reason": "topic"
+  },
+  {
+   "from": 4,
+   "to": 17,
+   "reason": "topic"
+  },
+  {
+   "from": 16,
+   "to": 17,
+   "reason": "topic"
+  },
+  {
+   "from": 5,
+   "to": 14,
+   "reason": "topic"
+  },
+  {
+   "from": 5,
+   "to": 15,
+   "reason": "topic"
+  },
+  {
+   "from": 14,
+   "to": 15,
+   "reason": "topic"
+  },
+  {
+   "from": 7,
+   "to": 8,
+   "reason": "topic"
+  },
+  {
+   "from": 7,
+   "to": 9,
+   "reason": "topic"
+  },
+  {
+   "from": 7,
+   "to": 10,
+   "reason": "topic"
+  },
+  {
+   "from": 7,
+   "to": 11,
+   "reason": "topic"
+  },
+  {
+   "from": 7,
+   "to": 12,
+   "reason": "topic"
+  },
+  {
+   "from": 7,
+   "to": 13,
+   "reason": "topic"
+  },
+  {
+   "from": 8,
+   "to": 9,
+   "reason": "topic"
+  },
+  {
+   "from": 8,
+   "to": 10,
+   "reason": "topic"
+  },
+  {
+   "from": 8,
+   "to": 11,
+   "reason": "topic"
+  },
+  {
+   "from": 8,
+   "to": 12,
+   "reason": "topic"
+  },
+  {
+   "from": 8,
+   "to": 13,
+   "reason": "topic"
+  },
+  {
+   "from": 9,
+   "to": 10,
+   "reason": "topic"
+  },
+  {
+   "from": 9,
+   "to": 11,
+   "reason": "topic"
+  },
+  {
+   "from": 9,
+   "to": 12,
+   "reason": "topic"
+  },
+  {
+   "from": 9,
+   "to": 13,
+   "reason": "topic"
+  },
+  {
+   "from": 10,
+   "to": 11,
+   "reason": "topic"
+  },
+  {
+   "from": 10,
+   "to": 12,
+   "reason": "topic"
+  },
+  {
+   "from": 10,
+   "to": 13,
+   "reason": "topic"
+  },
+  {
+   "from": 11,
+   "to": 12,
+   "reason": "topic"
+  },
+  {
+   "from": 11,
+   "to": 13,
+   "reason": "topic"
+  },
+  {
+   "from": 12,
+   "to": 13,
+   "reason": "topic"
+  },
+  {
+   "from": 18,
+   "to": 19,
+   "reason": "topic"
+  },
+  {
+   "from": 20,
+   "to": 21,
+   "reason": "topic"
+  },
+  {
+   "from": 20,
+   "to": 22,
+   "reason": "topic"
+  },
+  {
+   "from": 20,
+   "to": 23,
+   "reason": "topic"
+  },
+  {
+   "from": 20,
+   "to": 24,
+   "reason": "topic"
+  },
+  {
+   "from": 20,
+   "to": 25,
+   "reason": "topic"
+  },
+  {
+   "from": 21,
+   "to": 22,
+   "reason": "topic"
+  },
+  {
+   "from": 21,
+   "to": 23,
+   "reason": "topic"
+  },
+  {
+   "from": 21,
+   "to": 24,
+   "reason": "topic"
+  },
+  {
+   "from": 21,
+   "to": 25,
+   "reason": "topic"
+  },
+  {
+   "from": 22,
+   "to": 23,
+   "reason": "topic"
+  },
+  {
+   "from": 22,
+   "to": 24,
+   "reason": "topic"
+  },
+  {
+   "from": 22,
+   "to": 25,
+   "reason": "topic"
+  },
+  {
+   "from": 23,
+   "to": 24,
+   "reason": "topic"
+  },
+  {
+   "from": 23,
+   "to": 25,
+   "reason": "topic"
+  },
+  {
+   "from": 24,
+   "to": 25,
+   "reason": "topic"
+  },
+  {
+   "from": 29,
+   "to": 30,
+   "reason": "topic"
+  },
+  {
+   "from": 31,
+   "to": 32,
+   "reason": "topic"
+  },
+  {
+   "from": 31,
+   "to": 33,
+   "reason": "topic"
+  },
+  {
+   "from": 31,
+   "to": 34,
+   "reason": "topic"
+  },
+  {
+   "from": 31,
+   "to": 35,
+   "reason": "topic"
+  },
+  {
+   "from": 32,
+   "to": 33,
+   "reason": "topic"
+  },
+  {
+   "from": 32,
+   "to": 34,
+   "reason": "topic"
+  },
+  {
+   "from": 32,
+   "to": 35,
+   "reason": "topic"
+  },
+  {
+   "from": 33,
+   "to": 34,
+   "reason": "topic"
+  },
+  {
+   "from": 33,
+   "to": 35,
+   "reason": "topic"
+  },
+  {
+   "from": 34,
+   "to": 35,
+   "reason": "topic"
+  },
+  {
+   "from": 38,
+   "to": 39,
+   "reason": "topic"
+  },
+  {
+   "from": 38,
+   "to": 44,
+   "reason": "topic"
+  },
+  {
+   "from": 38,
+   "to": 108,
+   "reason": "topic"
+  },
+  {
+   "from": 39,
+   "to": 44,
+   "reason": "topic"
+  },
+  {
+   "from": 39,
+   "to": 108,
+   "reason": "topic"
+  },
+  {
+   "from": 44,
+   "to": 108,
+   "reason": "topic"
+  },
+  {
+   "from": 41,
+   "to": 42,
+   "reason": "topic"
+  },
+  {
+   "from": 41,
+   "to": 43,
+   "reason": "topic"
+  },
+  {
+   "from": 42,
+   "to": 43,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 49,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 50,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 51,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 52,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 53,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 54,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 55,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 56,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 48,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 50,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 51,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 52,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 53,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 54,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 55,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 56,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 49,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 50,
+   "to": 51,
+   "reason": "topic"
+  },
+  {
+   "from": 50,
+   "to": 52,
+   "reason": "topic"
+  },
+  {
+   "from": 50,
+   "to": 53,
+   "reason": "topic"
+  },
+  {
+   "from": 50,
+   "to": 54,
+   "reason": "topic"
+  },
+  {
+   "from": 50,
+   "to": 55,
+   "reason": "topic"
+  },
+  {
+   "from": 50,
+   "to": 56,
+   "reason": "topic"
+  },
+  {
+   "from": 50,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 50,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 51,
+   "to": 52,
+   "reason": "topic"
+  },
+  {
+   "from": 51,
+   "to": 53,
+   "reason": "topic"
+  },
+  {
+   "from": 51,
+   "to": 54,
+   "reason": "topic"
+  },
+  {
+   "from": 51,
+   "to": 55,
+   "reason": "topic"
+  },
+  {
+   "from": 51,
+   "to": 56,
+   "reason": "topic"
+  },
+  {
+   "from": 51,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 51,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 52,
+   "to": 53,
+   "reason": "topic"
+  },
+  {
+   "from": 52,
+   "to": 54,
+   "reason": "topic"
+  },
+  {
+   "from": 52,
+   "to": 55,
+   "reason": "topic"
+  },
+  {
+   "from": 52,
+   "to": 56,
+   "reason": "topic"
+  },
+  {
+   "from": 52,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 52,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 53,
+   "to": 54,
+   "reason": "topic"
+  },
+  {
+   "from": 53,
+   "to": 55,
+   "reason": "topic"
+  },
+  {
+   "from": 53,
+   "to": 56,
+   "reason": "topic"
+  },
+  {
+   "from": 53,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 53,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 54,
+   "to": 55,
+   "reason": "topic"
+  },
+  {
+   "from": 54,
+   "to": 56,
+   "reason": "topic"
+  },
+  {
+   "from": 54,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 54,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 55,
+   "to": 56,
+   "reason": "topic"
+  },
+  {
+   "from": 55,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 55,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 56,
+   "to": 57,
+   "reason": "topic"
+  },
+  {
+   "from": 56,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 57,
+   "to": 58,
+   "reason": "topic"
+  },
+  {
+   "from": 78,
+   "to": 79,
+   "reason": "topic"
+  },
+  {
+   "from": 78,
+   "to": 80,
+   "reason": "topic"
+  },
+  {
+   "from": 78,
+   "to": 81,
+   "reason": "topic"
+  },
+  {
+   "from": 79,
+   "to": 80,
+   "reason": "topic"
+  },
+  {
+   "from": 79,
+   "to": 81,
+   "reason": "topic"
+  },
+  {
+   "from": 80,
+   "to": 81,
+   "reason": "topic"
+  },
+  {
+   "from": 82,
+   "to": 83,
+   "reason": "topic"
+  },
+  {
+   "from": 82,
+   "to": 84,
+   "reason": "topic"
+  },
+  {
+   "from": 82,
+   "to": 85,
+   "reason": "topic"
+  },
+  {
+   "from": 82,
+   "to": 86,
+   "reason": "topic"
+  },
+  {
+   "from": 83,
+   "to": 84,
+   "reason": "topic"
+  },
+  {
+   "from": 83,
+   "to": 85,
+   "reason": "topic"
+  },
+  {
+   "from": 83,
+   "to": 86,
+   "reason": "topic"
+  },
+  {
+   "from": 84,
+   "to": 85,
+   "reason": "topic"
+  },
+  {
+   "from": 84,
+   "to": 86,
+   "reason": "topic"
+  },
+  {
+   "from": 85,
+   "to": 86,
+   "reason": "topic"
+  },
+  {
+   "from": 87,
+   "to": 88,
+   "reason": "topic"
+  },
+  {
+   "from": 89,
+   "to": 90,
+   "reason": "topic"
+  },
+  {
+   "from": 91,
+   "to": 92,
+   "reason": "topic"
+  },
+  {
+   "from": 91,
+   "to": 93,
+   "reason": "topic"
+  },
+  {
+   "from": 91,
+   "to": 94,
+   "reason": "topic"
+  },
+  {
+   "from": 91,
+   "to": 95,
+   "reason": "topic"
+  },
+  {
+   "from": 91,
+   "to": 96,
+   "reason": "topic"
+  },
+  {
+   "from": 92,
+   "to": 93,
+   "reason": "topic"
+  },
+  {
+   "from": 92,
+   "to": 94,
+   "reason": "topic"
+  },
+  {
+   "from": 92,
+   "to": 95,
+   "reason": "topic"
+  },
+  {
+   "from": 92,
+   "to": 96,
+   "reason": "topic"
+  },
+  {
+   "from": 93,
+   "to": 94,
+   "reason": "topic"
+  },
+  {
+   "from": 93,
+   "to": 95,
+   "reason": "topic"
+  },
+  {
+   "from": 93,
+   "to": 96,
+   "reason": "topic"
+  },
+  {
+   "from": 94,
+   "to": 95,
+   "reason": "topic"
+  },
+  {
+   "from": 94,
+   "to": 96,
+   "reason": "topic"
+  },
+  {
+   "from": 95,
+   "to": 96,
+   "reason": "topic"
+  },
+  {
+   "from": 98,
+   "to": 99,
+   "reason": "topic"
+  },
+  {
+   "from": 100,
+   "to": 191,
+   "reason": "topic"
+  },
+  {
+   "from": 100,
+   "to": 197,
+   "reason": "topic"
+  },
+  {
+   "from": 100,
+   "to": 266,
+   "reason": "topic"
+  },
+  {
+   "from": 100,
+   "to": 267,
+   "reason": "topic"
+  },
+  {
+   "from": 100,
+   "to": 271,
+   "reason": "topic"
+  },
+  {
+   "from": 100,
+   "to": 272,
+   "reason": "topic"
+  },
+  {
+   "from": 100,
+   "to": 273,
+   "reason": "topic"
+  },
+  {
+   "from": 191,
+   "to": 197,
+   "reason": "topic"
+  },
+  {
+   "from": 191,
+   "to": 266,
+   "reason": "topic"
+  },
+  {
+   "from": 191,
+   "to": 267,
+   "reason": "topic"
+  },
+  {
+   "from": 191,
+   "to": 271,
+   "reason": "topic"
+  },
+  {
+   "from": 191,
+   "to": 272,
+   "reason": "topic"
+  },
+  {
+   "from": 191,
+   "to": 273,
+   "reason": "topic"
+  },
+  {
+   "from": 197,
+   "to": 266,
+   "reason": "topic"
+  },
+  {
+   "from": 197,
+   "to": 267,
+   "reason": "topic"
+  },
+  {
+   "from": 197,
+   "to": 271,
+   "reason": "topic"
+  },
+  {
+   "from": 197,
+   "to": 272,
+   "reason": "topic"
+  },
+  {
+   "from": 197,
+   "to": 273,
+   "reason": "topic"
+  },
+  {
+   "from": 266,
+   "to": 267,
+   "reason": "topic"
+  },
+  {
+   "from": 266,
+   "to": 271,
+   "reason": "topic"
+  },
+  {
+   "from": 266,
+   "to": 272,
+   "reason": "topic"
+  },
+  {
+   "from": 266,
+   "to": 273,
+   "reason": "topic"
+  },
+  {
+   "from": 267,
+   "to": 271,
+   "reason": "topic"
+  },
+  {
+   "from": 267,
+   "to": 272,
+   "reason": "topic"
+  },
+  {
+   "from": 267,
+   "to": 273,
+   "reason": "topic"
+  },
+  {
+   "from": 271,
+   "to": 272,
+   "reason": "topic"
+  },
+  {
+   "from": 271,
+   "to": 273,
+   "reason": "topic"
+  },
+  {
+   "from": 272,
+   "to": 273,
+   "reason": "topic"
+  },
+  {
+   "from": 102,
+   "to": 103,
+   "reason": "topic"
+  },
+  {
+   "from": 102,
+   "to": 104,
+   "reason": "topic"
+  },
+  {
+   "from": 102,
+   "to": 105,
+   "reason": "topic"
+  },
+  {
+   "from": 102,
+   "to": 106,
+   "reason": "topic"
+  },
+  {
+   "from": 102,
+   "to": 107,
+   "reason": "topic"
+  },
+  {
+   "from": 103,
+   "to": 104,
+   "reason": "topic"
+  },
+  {
+   "from": 103,
+   "to": 105,
+   "reason": "topic"
+  },
+  {
+   "from": 103,
+   "to": 106,
+   "reason": "topic"
+  },
+  {
+   "from": 103,
+   "to": 107,
+   "reason": "topic"
+  },
+  {
+   "from": 104,
+   "to": 105,
+   "reason": "topic"
+  },
+  {
+   "from": 104,
+   "to": 106,
+   "reason": "topic"
+  },
+  {
+   "from": 104,
+   "to": 107,
+   "reason": "topic"
+  },
+  {
+   "from": 105,
+   "to": 106,
+   "reason": "topic"
+  },
+  {
+   "from": 105,
+   "to": 107,
+   "reason": "topic"
+  },
+  {
+   "from": 106,
+   "to": 107,
+   "reason": "topic"
+  },
+  {
+   "from": 111,
+   "to": 112,
+   "reason": "topic"
+  },
+  {
+   "from": 111,
+   "to": 113,
+   "reason": "topic"
+  },
+  {
+   "from": 111,
+   "to": 114,
+   "reason": "topic"
+  },
+  {
+   "from": 111,
+   "to": 115,
+   "reason": "topic"
+  },
+  {
+   "from": 111,
+   "to": 116,
+   "reason": "topic"
+  },
+  {
+   "from": 111,
+   "to": 117,
+   "reason": "topic"
+  },
+  {
+   "from": 111,
+   "to": 118,
+   "reason": "topic"
+  },
+  {
+   "from": 111,
+   "to": 119,
+   "reason": "topic"
+  },
+  {
+   "from": 112,
+   "to": 113,
+   "reason": "topic"
+  },
+  {
+   "from": 112,
+   "to": 114,
+   "reason": "topic"
+  },
+  {
+   "from": 112,
+   "to": 115,
+   "reason": "topic"
+  },
+  {
+   "from": 112,
+   "to": 116,
+   "reason": "topic"
+  },
+  {
+   "from": 112,
+   "to": 117,
+   "reason": "topic"
+  },
+  {
+   "from": 112,
+   "to": 118,
+   "reason": "topic"
+  },
+  {
+   "from": 112,
+   "to": 119,
+   "reason": "topic"
+  },
+  {
+   "from": 113,
+   "to": 114,
+   "reason": "topic"
+  },
+  {
+   "from": 113,
+   "to": 115,
+   "reason": "topic"
+  },
+  {
+   "from": 113,
+   "to": 116,
+   "reason": "topic"
+  },
+  {
+   "from": 113,
+   "to": 117,
+   "reason": "topic"
+  },
+  {
+   "from": 113,
+   "to": 118,
+   "reason": "topic"
+  },
+  {
+   "from": 113,
+   "to": 119,
+   "reason": "topic"
+  },
+  {
+   "from": 114,
+   "to": 115,
+   "reason": "topic"
+  },
+  {
+   "from": 114,
+   "to": 116,
+   "reason": "topic"
+  },
+  {
+   "from": 114,
+   "to": 117,
+   "reason": "topic"
+  },
+  {
+   "from": 114,
+   "to": 118,
+   "reason": "topic"
+  },
+  {
+   "from": 114,
+   "to": 119,
+   "reason": "topic"
+  },
+  {
+   "from": 115,
+   "to": 116,
+   "reason": "topic"
+  },
+  {
+   "from": 115,
+   "to": 117,
+   "reason": "topic"
+  },
+  {
+   "from": 115,
+   "to": 118,
+   "reason": "topic"
+  },
+  {
+   "from": 115,
+   "to": 119,
+   "reason": "topic"
+  },
+  {
+   "from": 116,
+   "to": 117,
+   "reason": "topic"
+  },
+  {
+   "from": 116,
+   "to": 118,
+   "reason": "topic"
+  },
+  {
+   "from": 116,
+   "to": 119,
+   "reason": "topic"
+  },
+  {
+   "from": 117,
+   "to": 118,
+   "reason": "topic"
+  },
+  {
+   "from": 117,
+   "to": 119,
+   "reason": "topic"
+  },
+  {
+   "from": 118,
+   "to": 119,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 135,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 136,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 137,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 138,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 139,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 140,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 141,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 142,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 134,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 136,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 137,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 138,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 139,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 140,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 141,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 142,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 135,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 137,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 138,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 139,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 140,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 141,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 142,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 136,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 137,
+   "to": 138,
+   "reason": "topic"
+  },
+  {
+   "from": 137,
+   "to": 139,
+   "reason": "topic"
+  },
+  {
+   "from": 137,
+   "to": 140,
+   "reason": "topic"
+  },
+  {
+   "from": 137,
+   "to": 141,
+   "reason": "topic"
+  },
+  {
+   "from": 137,
+   "to": 142,
+   "reason": "topic"
+  },
+  {
+   "from": 137,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 137,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 137,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 138,
+   "to": 139,
+   "reason": "topic"
+  },
+  {
+   "from": 138,
+   "to": 140,
+   "reason": "topic"
+  },
+  {
+   "from": 138,
+   "to": 141,
+   "reason": "topic"
+  },
+  {
+   "from": 138,
+   "to": 142,
+   "reason": "topic"
+  },
+  {
+   "from": 138,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 138,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 138,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 139,
+   "to": 140,
+   "reason": "topic"
+  },
+  {
+   "from": 139,
+   "to": 141,
+   "reason": "topic"
+  },
+  {
+   "from": 139,
+   "to": 142,
+   "reason": "topic"
+  },
+  {
+   "from": 139,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 139,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 139,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 140,
+   "to": 141,
+   "reason": "topic"
+  },
+  {
+   "from": 140,
+   "to": 142,
+   "reason": "topic"
+  },
+  {
+   "from": 140,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 140,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 140,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 141,
+   "to": 142,
+   "reason": "topic"
+  },
+  {
+   "from": 141,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 141,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 141,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 142,
+   "to": 143,
+   "reason": "topic"
+  },
+  {
+   "from": 142,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 142,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 143,
+   "to": 144,
+   "reason": "topic"
+  },
+  {
+   "from": 143,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 144,
+   "to": 146,
+   "reason": "topic"
+  },
+  {
+   "from": 180,
+   "to": 184,
+   "reason": "topic"
+  },
+  {
+   "from": 180,
+   "to": 185,
+   "reason": "topic"
+  },
+  {
+   "from": 180,
+   "to": 186,
+   "reason": "topic"
+  },
+  {
+   "from": 180,
+   "to": 187,
+   "reason": "topic"
+  },
+  {
+   "from": 180,
+   "to": 188,
+   "reason": "topic"
+  },
+  {
+   "from": 180,
+   "to": 189,
+   "reason": "topic"
+  },
+  {
+   "from": 180,
+   "to": 190,
+   "reason": "topic"
+  },
+  {
+   "from": 184,
+   "to": 185,
+   "reason": "topic"
+  },
+  {
+   "from": 184,
+   "to": 186,
+   "reason": "topic"
+  },
+  {
+   "from": 184,
+   "to": 187,
+   "reason": "topic"
+  },
+  {
+   "from": 184,
+   "to": 188,
+   "reason": "topic"
+  },
+  {
+   "from": 184,
+   "to": 189,
+   "reason": "topic"
+  },
+  {
+   "from": 184,
+   "to": 190,
+   "reason": "topic"
+  },
+  {
+   "from": 185,
+   "to": 186,
+   "reason": "topic"
+  },
+  {
+   "from": 185,
+   "to": 187,
+   "reason": "topic"
+  },
+  {
+   "from": 185,
+   "to": 188,
+   "reason": "topic"
+  },
+  {
+   "from": 185,
+   "to": 189,
+   "reason": "topic"
+  },
+  {
+   "from": 185,
+   "to": 190,
+   "reason": "topic"
+  },
+  {
+   "from": 186,
+   "to": 187,
+   "reason": "topic"
+  },
+  {
+   "from": 186,
+   "to": 188,
+   "reason": "topic"
+  },
+  {
+   "from": 186,
+   "to": 189,
+   "reason": "topic"
+  },
+  {
+   "from": 186,
+   "to": 190,
+   "reason": "topic"
+  },
+  {
+   "from": 187,
+   "to": 188,
+   "reason": "topic"
+  },
+  {
+   "from": 187,
+   "to": 189,
+   "reason": "topic"
+  },
+  {
+   "from": 187,
+   "to": 190,
+   "reason": "topic"
+  },
+  {
+   "from": 188,
+   "to": 189,
+   "reason": "topic"
+  },
+  {
+   "from": 188,
+   "to": 190,
+   "reason": "topic"
+  },
+  {
+   "from": 189,
+   "to": 190,
+   "reason": "topic"
+  },
+  {
+   "from": 181,
+   "to": 182,
+   "reason": "topic"
+  },
+  {
+   "from": 181,
+   "to": 183,
+   "reason": "topic"
+  },
+  {
+   "from": 182,
+   "to": 183,
+   "reason": "topic"
+  },
+  {
+   "from": 192,
+   "to": 193,
+   "reason": "topic"
+  },
+  {
+   "from": 194,
+   "to": 195,
+   "reason": "topic"
+  },
+  {
+   "from": 194,
+   "to": 196,
+   "reason": "topic"
+  },
+  {
+   "from": 195,
+   "to": 196,
+   "reason": "topic"
+  },
+  {
+   "from": 198,
+   "to": 199,
+   "reason": "topic"
+  },
+  {
+   "from": 198,
+   "to": 200,
+   "reason": "topic"
+  },
+  {
+   "from": 199,
+   "to": 200,
+   "reason": "topic"
+  },
+  {
+   "from": 202,
+   "to": 203,
+   "reason": "topic"
+  },
+  {
+   "from": 206,
+   "to": 207,
+   "reason": "topic"
+  },
+  {
+   "from": 206,
+   "to": 208,
+   "reason": "topic"
+  },
+  {
+   "from": 206,
+   "to": 209,
+   "reason": "topic"
+  },
+  {
+   "from": 206,
+   "to": 210,
+   "reason": "topic"
+  },
+  {
+   "from": 206,
+   "to": 211,
+   "reason": "topic"
+  },
+  {
+   "from": 206,
+   "to": 212,
+   "reason": "topic"
+  },
+  {
+   "from": 206,
+   "to": 213,
+   "reason": "topic"
+  },
+  {
+   "from": 206,
+   "to": 214,
+   "reason": "topic"
+  },
+  {
+   "from": 207,
+   "to": 208,
+   "reason": "topic"
+  },
+  {
+   "from": 207,
+   "to": 209,
+   "reason": "topic"
+  },
+  {
+   "from": 207,
+   "to": 210,
+   "reason": "topic"
+  },
+  {
+   "from": 207,
+   "to": 211,
+   "reason": "topic"
+  },
+  {
+   "from": 207,
+   "to": 212,
+   "reason": "topic"
+  },
+  {
+   "from": 207,
+   "to": 213,
+   "reason": "topic"
+  },
+  {
+   "from": 207,
+   "to": 214,
+   "reason": "topic"
+  },
+  {
+   "from": 208,
+   "to": 209,
+   "reason": "topic"
+  },
+  {
+   "from": 208,
+   "to": 210,
+   "reason": "topic"
+  },
+  {
+   "from": 208,
+   "to": 211,
+   "reason": "topic"
+  },
+  {
+   "from": 208,
+   "to": 212,
+   "reason": "topic"
+  },
+  {
+   "from": 208,
+   "to": 213,
+   "reason": "topic"
+  },
+  {
+   "from": 208,
+   "to": 214,
+   "reason": "topic"
+  },
+  {
+   "from": 209,
+   "to": 210,
+   "reason": "topic"
+  },
+  {
+   "from": 209,
+   "to": 211,
+   "reason": "topic"
+  },
+  {
+   "from": 209,
+   "to": 212,
+   "reason": "topic"
+  },
+  {
+   "from": 209,
+   "to": 213,
+   "reason": "topic"
+  },
+  {
+   "from": 209,
+   "to": 214,
+   "reason": "topic"
+  },
+  {
+   "from": 210,
+   "to": 211,
+   "reason": "topic"
+  },
+  {
+   "from": 210,
+   "to": 212,
+   "reason": "topic"
+  },
+  {
+   "from": 210,
+   "to": 213,
+   "reason": "topic"
+  },
+  {
+   "from": 210,
+   "to": 214,
+   "reason": "topic"
+  },
+  {
+   "from": 211,
+   "to": 212,
+   "reason": "topic"
+  },
+  {
+   "from": 211,
+   "to": 213,
+   "reason": "topic"
+  },
+  {
+   "from": 211,
+   "to": 214,
+   "reason": "topic"
+  },
+  {
+   "from": 212,
+   "to": 213,
+   "reason": "topic"
+  },
+  {
+   "from": 212,
+   "to": 214,
+   "reason": "topic"
+  },
+  {
+   "from": 213,
+   "to": 214,
+   "reason": "topic"
+  },
+  {
+   "from": 215,
+   "to": 216,
+   "reason": "topic"
+  },
+  {
+   "from": 215,
+   "to": 217,
+   "reason": "topic"
+  },
+  {
+   "from": 215,
+   "to": 218,
+   "reason": "topic"
+  },
+  {
+   "from": 215,
+   "to": 219,
+   "reason": "topic"
+  },
+  {
+   "from": 216,
+   "to": 217,
+   "reason": "topic"
+  },
+  {
+   "from": 216,
+   "to": 218,
+   "reason": "topic"
+  },
+  {
+   "from": 216,
+   "to": 219,
+   "reason": "topic"
+  },
+  {
+   "from": 217,
+   "to": 218,
+   "reason": "topic"
+  },
+  {
+   "from": 217,
+   "to": 219,
+   "reason": "topic"
+  },
+  {
+   "from": 218,
+   "to": 219,
+   "reason": "topic"
+  },
+  {
+   "from": 220,
+   "to": 221,
+   "reason": "topic"
+  },
+  {
+   "from": 220,
+   "to": 222,
+   "reason": "topic"
+  },
+  {
+   "from": 220,
+   "to": 240,
+   "reason": "topic"
+  },
+  {
+   "from": 220,
+   "to": 241,
+   "reason": "topic"
+  },
+  {
+   "from": 221,
+   "to": 222,
+   "reason": "topic"
+  },
+  {
+   "from": 221,
+   "to": 240,
+   "reason": "topic"
+  },
+  {
+   "from": 221,
+   "to": 241,
+   "reason": "topic"
+  },
+  {
+   "from": 222,
+   "to": 240,
+   "reason": "topic"
+  },
+  {
+   "from": 222,
+   "to": 241,
+   "reason": "topic"
+  },
+  {
+   "from": 240,
+   "to": 241,
+   "reason": "topic"
+  },
+  {
+   "from": 223,
+   "to": 224,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 226,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 227,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 228,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 229,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 230,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 231,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 232,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 233,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 225,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 227,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 228,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 229,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 230,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 231,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 232,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 233,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 226,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 228,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 229,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 230,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 231,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 232,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 233,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 227,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 229,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 230,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 231,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 232,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 233,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 228,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 230,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 231,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 232,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 233,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 229,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 231,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 232,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 233,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 230,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 231,
+   "to": 232,
+   "reason": "topic"
+  },
+  {
+   "from": 231,
+   "to": 233,
+   "reason": "topic"
+  },
+  {
+   "from": 231,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 231,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 231,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 231,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 231,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 231,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 232,
+   "to": 233,
+   "reason": "topic"
+  },
+  {
+   "from": 232,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 232,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 232,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 232,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 232,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 232,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 233,
+   "to": 234,
+   "reason": "topic"
+  },
+  {
+   "from": 233,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 233,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 233,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 233,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 233,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 234,
+   "to": 235,
+   "reason": "topic"
+  },
+  {
+   "from": 234,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 234,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 234,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 234,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 235,
+   "to": 236,
+   "reason": "topic"
+  },
+  {
+   "from": 235,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 235,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 235,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 236,
+   "to": 237,
+   "reason": "topic"
+  },
+  {
+   "from": 236,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 236,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 237,
+   "to": 238,
+   "reason": "topic"
+  },
+  {
+   "from": 237,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 238,
+   "to": 239,
+   "reason": "topic"
+  },
+  {
+   "from": 243,
+   "to": 244,
+   "reason": "topic"
+  },
+  {
+   "from": 243,
+   "to": 245,
+   "reason": "topic"
+  },
+  {
+   "from": 244,
+   "to": 245,
+   "reason": "topic"
+  },
+  {
+   "from": 262,
+   "to": 263,
+   "reason": "topic"
+  },
+  {
+   "from": 262,
+   "to": 264,
+   "reason": "topic"
+  },
+  {
+   "from": 262,
+   "to": 265,
+   "reason": "topic"
+  },
+  {
+   "from": 263,
+   "to": 264,
+   "reason": "topic"
+  },
+  {
+   "from": 263,
+   "to": 265,
+   "reason": "topic"
+  },
+  {
+   "from": 264,
+   "to": 265,
+   "reason": "topic"
+  },
+  {
+   "from": 268,
+   "to": 269,
+   "reason": "topic"
+  },
+  {
+   "from": 274,
+   "to": 275,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 281,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 282,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 283,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 284,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 285,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 286,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 287,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 288,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 280,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 282,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 283,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 284,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 285,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 286,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 287,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 288,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 281,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 283,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 284,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 285,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 286,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 287,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 288,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 282,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 284,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 285,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 286,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 287,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 288,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 283,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 284,
+   "to": 285,
+   "reason": "topic"
+  },
+  {
+   "from": 284,
+   "to": 286,
+   "reason": "topic"
+  },
+  {
+   "from": 284,
+   "to": 287,
+   "reason": "topic"
+  },
+  {
+   "from": 284,
+   "to": 288,
+   "reason": "topic"
+  },
+  {
+   "from": 284,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 284,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 284,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 284,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 285,
+   "to": 286,
+   "reason": "topic"
+  },
+  {
+   "from": 285,
+   "to": 287,
+   "reason": "topic"
+  },
+  {
+   "from": 285,
+   "to": 288,
+   "reason": "topic"
+  },
+  {
+   "from": 285,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 285,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 285,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 285,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 286,
+   "to": 287,
+   "reason": "topic"
+  },
+  {
+   "from": 286,
+   "to": 288,
+   "reason": "topic"
+  },
+  {
+   "from": 286,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 286,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 286,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 286,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 287,
+   "to": 288,
+   "reason": "topic"
+  },
+  {
+   "from": 287,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 287,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 287,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 287,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 288,
+   "to": 289,
+   "reason": "topic"
+  },
+  {
+   "from": 288,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 288,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 288,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 289,
+   "to": 290,
+   "reason": "topic"
+  },
+  {
+   "from": 289,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 289,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 290,
+   "to": 291,
+   "reason": "topic"
+  },
+  {
+   "from": 290,
+   "to": 292,
+   "reason": "topic"
+  },
+  {
+   "from": 291,
+   "to": 292,
+   "reason": "topic"
+  }
+ ]
+};
+// docs/ 根绝对路径（构建时注入），用于拼接 file:// 打开本地文件
+const ROOT = GRAPH.root || "";
+
+// 莫兰迪色板：颜色 = 文件格式
+const PALETTE = {
+  "md":    { bg: "#8FA58D", border: "#6d826b" },
+  "网页":   { bg: "#7D8CA3", border: "#5d6d84" },
+  "pdf":   { bg: "#9B8EA8", border: "#7a6e87" },
+  "excel": { bg: "#C0A980", border: "#9d8964" },
+  "图片":   { bg: "#C4A29E", border: "#a3827e" },
+  "音频":   { bg: "#8FB0B0", border: "#6f8f8f" },
+  "视频":   { bg: "#C79A7B", border: "#a57b5e" },
+  "代码":   { bg: "#6E7F8D", border: "#52616e" },
+  "其他":   { bg: "#A8A29E", border: "#87817d" }
+};
+// 边样式：reason → 颜色/线型
+const EDGE_STYLE = {
+  "explicit": { color: "#c9b8a7", width: 2.0, dashes: false },  // 显式声明
+  "topic":    { color: "#7d8ca3", width: 1.2, dashes: false },  // 专题归属
+  "cite":     { color: "#9b8ea8", width: 1.0, dashes: [6,4] },  // 正文引用
+  "similar":  { color: "#5f6068", width: 0.7, dashes: [2,4] },  // 标题相似
+  "llm":      { color: "#c79a7b", width: 1.6, dashes: false }   // Claude 补充
+};
+const REASON_LABEL = { explicit: "显式声明", topic: "专题归属", cite: "正文引用", similar: "标题相似", llm: "Claude 补充" };
+
+// 节点大小：关联数 + 文件大小 → 信息量
+function nodeSize(n) {
+  return Math.min(30, Math.max(10, 10 + n.degree * 2.5 + Math.log2(n.bytes + 1) * 1.2));
+}
+
+// ---- 组装数据 ----
+const nodes = GRAPH.nodes.map(n => {
+  const pal = PALETTE[n.fmt] || PALETTE["其他"];
+  return {
+    id: n.id, label: n.title,
+    shape: "dot", size: nodeSize(n),
+    color: { background: pal.bg, border: pal.border, highlight: { background: pal.bg, border: "#fff" } },
+    font: { color: "#d8d6cf", size: 12, face: "PingFang SC" },
+    title: n.title,  // tooltip
+    _meta: n
+  };
+});
+const edges = GRAPH.edges.map(e => {
+  const st = EDGE_STYLE[e.reason] || EDGE_STYLE.similar;
+  return {
+    from: e.from, to: e.to,
+    color: { color: st.color, highlight: st.color },
+    width: st.width, dashes: st.dashes,
+    title: REASON_LABEL[e.reason] || e.reason
+  };
+});
+
+const container = document.getElementById("graph");
+const network = new vis.Network(container, { nodes, edges }, {
+  physics: { solver: "forceAtlas2Based", forceAtlas2Based: { gravitationalConstant: -60, centralGravity: 0.008, springLength: 130, springConstant: 0.05, damping: 0.5 }, stabilization: { iterations: 300 } },
+  interaction: { hover: true, tooltipDelay: 200 },
+  nodes: { borderWidth: 1.5 },
+  edges: { smooth: { type: "continuous" } }
+});
+window.NETWORK = network; // 调试/集成用
+
+// ---- 切片逻辑 ----
+const state = { topic: new Set(), subject: new Set(), type: new Set(), tag: new Set(), format: new Set(), search: "" };
+function applyFilter() {
+  const q = state.search;
+  const keep = new Set();
+  nodes.forEach(n => {
+    const m = n._meta;
+    const okTopic  = state.topic.size  === 0 || state.topic.has(m.topic);
+    const okSubj   = state.subject.size === 0 || state.subject.has(m.subject);
+    const okType   = state.type.size   === 0 || state.type.has(m.type);
+    const okTag    = state.tag.size    === 0 || (m.tags || []).some(t => state.tag.has(t));
+    const okFmt    = state.format.size === 0 || state.format.has(m.fmt);
+    const okSearch = !q || (m.title || "").toLowerCase().includes(q)
+      || (m.path || "").toLowerCase().includes(q)
+      || (m.tags || []).some(t => (t || "").toLowerCase().includes(q))
+      || (m.synopsis || "").toLowerCase().includes(q);
+    if (okTopic && okSubj && okType && okTag && okFmt && okSearch) keep.add(n.id);
+  });
+  const edgeSet = edges.filter(e => keep.has(e.from) && keep.has(e.to));
+  network.setData({ nodes: nodes.filter(n => keep.has(n.id)), edges: edgeSet });
+  document.getElementById("stats").innerHTML =
+    `当前显示 ${keep.size}/${nodes.length} 节点 · ${edgeSet.length}/${edges.length} 条边`;
+}
+function mkChip(value, dim, box, hidden) {
+  const el = document.createElement("span");
+  el.className = "chip";
+  el.textContent = value;
+  el.dataset.v = value;
+  if (state[dim].has(value)) el.classList.add("active");
+  el.onclick = () => {
+    const set = state[dim];
+    if (set.has(value)) { set.delete(value); el.classList.remove("active"); }
+    else { set.add(value); el.classList.add("active"); }
+    applyFilter();
+  };
+  return el;
+}
+// 维度切片：默认显示前 LIMIT 个（激活中的永远置顶可见），其余收进"更多"
+function buildSlicer(dim, containerId, LIMIT = 8) {
+  const values = [...new Set(GRAPH.nodes.map(n => n[dim]).filter(v => v != null && v !== ""))].sort();
+  const box = document.getElementById(containerId);
+  box.innerHTML = "";
+  // 维度无数据时隐藏整个区块
+  document.getElementById("sec-" + dim).style.display = values.length ? "" : "none";
+  const hidden = [];
+  let shown = 0;
+  // 激活中的优先展示
+  values.filter(v => state[dim].has(v)).forEach(v => box.appendChild(mkChip(v, dim)));
+  values.filter(v => !state[dim].has(v)).forEach(v => {
+    if (shown < LIMIT) { box.appendChild(mkChip(v, dim)); shown++; }
+    else hidden.push(v);
+  });
+  if (hidden.length) {
+    const more = document.createElement("span");
+    more.className = "chip more";
+    more.textContent = `更多 ${hidden.length} ▾`;
+    more.onclick = () => {
+      const expanded = more.textContent.includes("▴");
+      if (expanded) {
+        // 收起：只移除未激活的隐藏值，激活中的保留可见
+        hidden.filter(v => !state[dim].has(v)).forEach(v => box.querySelector(`.chip[data-v="${CSS.escape(v)}"]`)?.remove());
+        more.textContent = `更多 ${hidden.length} ▾`;
+      } else {
+        hidden.forEach(v => box.appendChild(mkChip(v, dim)));
+        more.textContent = "收起 ▴";
+      }
+    };
+    box.appendChild(more);
+  }
+}
+// 标签维度：平铺所有标签，同样限高折叠
+function buildTagSlicer() {
+  const values = [...new Set(GRAPH.nodes.flatMap(n => n.tags || []))].sort();
+  const box = document.getElementById("slicer-tag");
+  box.innerHTML = "";
+  document.getElementById("sec-tag").style.display = values.length ? "" : "none";
+  const hidden = [];
+  let shown = 0;
+  values.filter(v => state.tag.has(v)).forEach(v => box.appendChild(mkChip(v, "tag")));
+  values.filter(v => !state.tag.has(v)).forEach(v => {
+    if (shown < 12) { box.appendChild(mkChip(v, "tag")); shown++; }
+    else hidden.push(v);
+  });
+  if (hidden.length) {
+    const more = document.createElement("span");
+    more.className = "chip more";
+    more.textContent = `更多 ${hidden.length} ▾`;
+    more.onclick = () => {
+      const expanded = more.textContent.includes("▴");
+      if (expanded) {
+        hidden.filter(v => !state.tag.has(v)).forEach(v => box.querySelector(`.chip[data-v="${CSS.escape(v)}"]`)?.remove());
+        more.textContent = `更多 ${hidden.length} ▾`;
+      } else {
+        hidden.forEach(v => box.appendChild(mkChip(v, "tag")));
+        more.textContent = "收起 ▴";
+      }
+    };
+    box.appendChild(more);
+  }
+}
+
+// ---- 详情面板 ----
+const detail = document.getElementById("detail");
+function showDetail(p) {
+  if (p.nodes.length === 0) { detail.classList.remove("show"); return; }
+  const n = nodes.find(x => x.id === p.nodes[0]);
+  const m = n._meta;
+  const relList = edges.filter(e => e.from === n.id || e.to === n.id)
+    .map(e => {
+      const other = nodes.find(x => x.id === (e.from === n.id ? e.to : e.from));
+      return other ? `<a href="javascript:void(0)" class="rel" data-id="${other.id}">${other.label}</a><span class="rlabel">（${REASON_LABEL[e.title] || e.title}）</span>` : "";
+    });
+  detail.classList.add("show");
+  detail.innerHTML = `
+    <span class="close">✕ 关闭</span>
+    <h3>${m.title}</h3>
+    <div class="row"><b>类型</b>${m.type || "-"}　<b>主体</b>${m.subject || "-"}　<b>主题</b>${m.topic || "-"}</div>
+    <div class="tags">${(m.tags || []).map(t => `<span class="tag">${t}</span>`).join("")}</div>
+    <div class="synopsis">${m.synopsis || ""}</div>
+    <div class="row" style="margin-top:8px"><b>关联（${relList.length}）</b></div>
+    <div class="row">${relList.join("<br>") || "无"}</div>
+    <div class="row" style="margin-top:8px"><b>路径</b></div>
+    <div class="row"><a class="path" href="file://${ROOT}${m.path}" title="在本地打开">${m.path}</a></div>
+  `;
+  detail.querySelector(".close").onclick = () => detail.classList.remove("show");
+  detail.querySelectorAll(".rel").forEach(a => a.onclick = () => {
+    const target = nodes.find(x => x.id === Number(a.dataset.id));
+    if (target) { network.selectNodes([target.id], { selectEvent: true }); network.focus(target.id, { scale: 1.2, animation: true }); }
+  });
+}
+network.on("click", showDetail);
+network.on("select", showDetail);
+
+// ---- 图例：格式可点击过滤（多选 = 并集）----
+function buildLegend() {
+  const box = document.getElementById("legend");
+  box.innerHTML = "";
+  const counts = GRAPH.nodes.reduce((acc, n) => (acc[n.fmt] = (acc[n.fmt] || 0) + 1, acc), {});
+  document.getElementById("sec-legend").style.display = Object.keys(counts).length ? "" : "none";
+  Object.entries(PALETTE).forEach(([k, v]) => {
+    if (!(k in counts)) return; // 无此格式文档不显示
+    const el = document.createElement("div");
+    el.className = "legend-item";
+    if (state.format.has(k)) el.classList.add("active");
+    el.innerHTML = `<span class="swatch" style="background:${v.bg}"></span>${k}<span class="count">${counts[k]}</span>`;
+    el.onclick = () => {
+      if (state.format.has(k)) { state.format.delete(k); el.classList.remove("active"); }
+      else { state.format.add(k); el.classList.add("active"); }
+      applyFilter();
+    };
+    box.appendChild(el);
+  });
+}
+
+// ---- 搜索框 ----
+const searchInput = document.getElementById("search");
+searchInput.addEventListener("input", e => {
+  state.search = e.target.value.trim().toLowerCase();
+  applyFilter();
+});
+searchInput.addEventListener("keydown", e => {
+  if (e.key === "Escape") { searchInput.value = ""; state.search = ""; applyFilter(); }
+});
+
+// ---- 初始化 ----
+buildSlicer("topic", "slicer-topic");
+buildSlicer("subject", "slicer-subject");
+buildSlicer("type", "slicer-type");
+buildTagSlicer();
+buildLegend();
+const deg = Object.entries(GRAPH.nodes.reduce((acc, n) => (acc[n.fmt] = (acc[n.fmt] || 0) + 1, acc), {}));
+document.getElementById("stats").innerHTML =
+  `共 ${GRAPH.nodes.length} 节点 · ${GRAPH.edges.length} 条边<br>格式分布：${deg.map(([k, v]) => `${k} ${v}`).join(" · ")}`;
+</script>
+</body>
+</html>
