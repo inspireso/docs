@@ -44,7 +44,8 @@ FMT_BY_EXT = {
 SENSITIVE_KEYWORDS = ["密码", "密钥", "token", "账号", "身份证", "银行卡",
                       "体检", "病历", "工资", "合同", "发票", "简历",
                       "secret", "password", "credential", "private"]
-SKIP_NAMES = {".meta", ".git", ".gitkeep", "__pycache__", ".DS_Store", ".Trash"}
+SKIP_NAMES = {".meta", ".git", ".gitkeep", "__pycache__", ".DS_Store", ".Trash",
+              "target", "node_modules", "venv"}
 # 可 LLM 通读的文本类（subagent 补标签范围）
 TEXT_FMTS = {"md", "网页", "代码"}
 MAX_TAG_BYTES = 200 * 1024   # 超过 200KB 不推荐 LLM 通读，不列入待补
@@ -59,6 +60,23 @@ def is_sensitive(rel: str) -> bool:
 def is_hidden_path(rel: str) -> bool:
     """路径任一段以 . 开头即为隐藏（.claude/、.vscode/、.env 等），构建时忽略。"""
     return any(part.startswith(".") for part in rel.split("/"))
+
+
+def is_build_path(rel: str) -> bool:
+    """路径任一段命中产物/依赖目录（target、node_modules、venv 等），构建时忽略。
+
+    这类目录里的文件是编译中间产物/第三方依赖，标题多为哈希名（如
+    libminigrep-13017493f714a24c.rmeta），登记进星图毫无意义。"""
+    return any(part in SKIP_NAMES for part in rel.split("/"))
+
+
+def keep_for_display(recs: dict) -> dict:
+    """展示层过滤：隐藏路径、产物/依赖目录、空文件（0 字节）不进索引与星图。
+
+    台账保留全部历史记录（append-only），只在此处过滤，文件日后写入内容会自动恢复显示。"""
+    return {k: v for k, v in recs.items()
+            if not is_hidden_path(k) and not is_build_path(k)
+            and v.get("bytes", 0) > 0}
 
 
 def load_extra(meta_starmap: Path, name: str) -> list:
@@ -315,7 +333,7 @@ def main():
         if not ledger_p.exists():
             sys.exit("错误: 尚未初始化，请先运行 init 或 build")
         recs = load_ledger(root / ".meta" / "index")
-        recs = {k: v for k, v in recs.items() if not is_hidden_path(k)}
+        recs = keep_for_display(recs)
         todo = export_tag_todo(root, recs)
         print(f"📋 待补标签 {len(todo)} 份（文本类 · 非敏感 · 台账无标签 · 未覆盖）")
         print(f"   清单: {root}/.meta/starmap/todo_tags.json（按 topic 排序，供 subagent 分片）")
@@ -327,7 +345,8 @@ def main():
     files = scan_files(root)
     recs = load_ledger(root / ".meta" / "index")
     recs, added = sync_ledger(root, files, recs)
-    recs = {k: v for k, v in recs.items() if not is_hidden_path(k)}  # 构建忽略隐藏文件（台账保留历史）
+    # 展示层过滤：隐藏/产物目录/空文件不进索引与星图（台账保留历史）
+    recs = keep_for_display(recs)
     build_index(root, recs)
     tags_applied, tags_dropped, llm_edges = build_starmap(root, recs)
 
