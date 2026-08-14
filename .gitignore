@@ -443,3 +443,7 @@ xcuserdata/
 *.xcscmblueprint
 
 .obsidian/
+
+
+## ai
+settings.local.json

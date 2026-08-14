@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(grep *)",
+      "Bash(ls *)",
+      "Bash(git *)",
+      "Read(*.md)",
+      "Edit(*.md)",
+      "Bash(lark-cli *)"
+    ],
+    "ask": ["Read(*.pem)", "Read(*.key)", "Bash(rm *)", "Bash(git push *)"],
+    "deny": []
+  }
+}

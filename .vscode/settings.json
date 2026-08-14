@@ -1,17 +1,10 @@
 {
   "editor.formatOnSave": false,
-  "python.formatting.provider": "black",
-  "python.formatting.blackArgs": [
-    "--skip-string-normalization"
-  ],
   "[python]": {
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
       "source.organizeImports": "explicit"
-    },
+    }
   },
-  "isort.args": [
-    "--profile",
-    "black"
-  ],
+  "isort.args": ["--profile", "black"]
 }
