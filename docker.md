@@ -59,27 +59,35 @@ sudo systemctl enable docker && sudo systemctl start docker
 mkdir -p /etc/docker
 cat <<EOF >  /etc/docker/daemon.json
 {
+  "bip": "10.16.0.1/16",
   "exec-opts": ["native.cgroupdriver=systemd"],
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "100m",
     "max-file": "5"
   },
-  "registry-mirrors" : [
-    "https://docker.m.daocloud.io",
-    "https://dockerproxy.com",
-    "https://docker.mirrors.ustc.edu.cn",
-    "https://docker.nju.edu.cn"
-  ],
-  "bip": "10.16.0.1/16"
+
+  "registry-mirrors": [
+    "https://dc271quh.mirror.aliyuncs.com"
+  ]
 }
 EOF
+
+cat <<EOF >  /etc/cron.daily/docker
+#!/bin/sh
+
+/bin/docker  system prune -fa
+
+EOF
+
+chmod +x /etc/cron.daily/docker
 
 cat <<EOF >>  /etc/sysctl.conf
 net.ipv6.conf.all.disable_ipv6=1
 net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
 EOF
+
 sysctl -p
 ```
 
@@ -108,4 +116,10 @@ docker logs xxx &> build.log
 
 # 输出日志到指定文件,包括错误信息, 同时直接查看
 docker logs xxx 2>&1 | tee xxx.log
+```
+
+### 权限问题
+```sh
+sudo usermod -aG docker <用户名>  # 例如 sudo usermod -aG docker user1[1,3,6](@ref)
+sudo newgrp docker
 ```
