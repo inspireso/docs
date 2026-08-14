@@ -445,5 +445,17 @@ xcuserdata/
 .obsidian/
 
 
+## 敏感配置文件（禁止提交）
+*.env
+.env.*
+!*.env.example
+*.pem
+*.key
+!*.key.example
+*.p12
+*.jks
+*.pfx
+
+
 ## ai
 settings.local.json

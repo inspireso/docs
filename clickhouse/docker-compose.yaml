@@ -9,12 +9,12 @@ services:
         hard: 262144
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
-      - CLICKHOUSE_ADMIN_PASSWORD=CHANGE_ME_ADMIN_PASSWORD
+      - CLICKHOUSE_ADMIN_PASSWORD=${CLICKHOUSE_ADMIN_PASSWORD:?请通过环境变量或 clickhouse/.env 设置}
       - TZ=Asia/Shanghai
       # - CLICKHOUSE_DB=jquant
       # - CLICKHOUSE_USER=admin
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-      - CLICKHOUSE_PASSWORD=CHANGE_ME_PASSWORD
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:?请通过环境变量或 clickhouse/.env 设置}
     ports:
       - "8123:8123"
       - "9000:9000"

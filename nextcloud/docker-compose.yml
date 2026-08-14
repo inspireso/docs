@@ -8,9 +8,9 @@ services:
     volumes:
       - /Users/my/nextcloud/db:/var/lib/mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=CHANGE_ME_ROOT_PASSWORD
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?请通过环境变量或 nextcloud/.env 设置}
     env_file:
-      - db.env      
+      - db.env
 
 
   redis:
