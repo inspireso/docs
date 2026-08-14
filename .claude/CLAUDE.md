@@ -51,6 +51,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 cd python && source .venv/bin/activate
 ```
 
+## 知识库产物(starmap)
+
+- 根目录 `starmap.html` 与 `.meta/` 是 starmap 知识库自动生成的产物(台账/索引/星图),**不要手编**
+- 新增/删除文件后运行 `.claude/skills/starmap/scripts/starmap.py build .` 增量刷新
+- 产物细节与维护方式见 `.claude/skills/starmap/SKILL.md`
+
 ## 文档风格
 
 - 所有文档使用中文
