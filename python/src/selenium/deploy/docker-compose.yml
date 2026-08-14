@@ -1,23 +1,42 @@
-version: "3"
 services:
   chrome:
-    image: selenium/standalone-chrome:4.13
+    image: selenium/standalone-chrome:142.0
     shm_size: 2gb
-    networks:
-      - sel
+    environment:
+      - SE_NODE_MAX_SESSIONS=50
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
     ports:
       - "4444:4444"
       - "7900:7900"
     restart: always
-  robot:
-    image: registry.cn-hangzhou.aliyuncs.com/base_containers/selenium:ocr-0.2.1
+  r10002:
+    image: registry.cn-hangzhou.aliyuncs.com/base_containers/selenium:ocr-2.3.5
     depends_on:
-      - chrome  
+      - chrome
     networks:
       - sel
     environment:
       - WEB_DRIVER_URL=http://chrome:4444/wd/hub
+      - MOCK_URL=https://m.xm.celoan.cn/service/businessEnvironment/businessFill?redirect=%252F&id=10002
       - VOTES=10000
+      - CHECK_INDEX=-3
+      - CHECK_OTHER=1
+    restart: always
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: always
+  r10001:
+    image: registry.cn-hangzhou.aliyuncs.com/base_containers/selenium:ocr-2.3.5
+    depends_on:
+      - chrome
+    networks:
+      - sel
+    environment:
+      - WEB_DRIVER_URL=http://chrome:4444/wd/hub
+      - MOCK_URL=https://m.xm.celoan.cn/service/businessEnvironment/businessFill?redirect=%252F&id=10001
+      - VOTES=10000
+      - CHECK_INDEX=45
     restart: always
     deploy:
       replicas: 1

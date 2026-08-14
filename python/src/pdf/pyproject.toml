@@ -1,19 +1,15 @@
 [project]
-name = "python-example"
+name = "python-pdf"
 version = "0.0.1"
 description = ""
 authors = [
     {name = "enoch",email = "lanxenet@gmail.com"},
 ]
 dependencies = [
-    "tabula-py>=2.10.0",
-    "jpype1>=1.5.0",
-    "openpyxl>=3.1.5",
-    "tabula>=1.0.5",
-    "pdfplumber>=0.11.4",
-    "pandas>=2.2.3",
-    "pytesseract>=0.3.13",
-    "pillow>=11.0.0",
+    "pymupdf4llm>=0.0.17",
+    "ollama>=0.3.3",
+    "surya-ocr>=0.6.13",
+    "streamlit>=1.40.2",
 ]
 requires-python = "==3.12.*"
 readme = "README.md"
@@ -21,7 +17,7 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
-[dependency-groups]
+[tool.pdm.dev-dependencies]
 dev = [
     "black>=24.8.0",
     "pytest-asyncio>=0.24.0",
@@ -33,11 +29,9 @@ log_cli = true
 log_level = "NOTSET"
 testpaths = [
     "tests",
-    "**/*_test.py",
+    "src",
 ]
 python_files = [
     "test_*.py",
     "*_test.py",
-    "tests.py",
-    "test.py",
 ]

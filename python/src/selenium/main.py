@@ -2,29 +2,39 @@ import base64
 import os
 import time
 
-from ocrlib import OcrByOnnx
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # 指定投票页面
 mock_url = os.getenv(
-    'MOCK_URL',
-    'https://domain/your/mock/url',
+    "MOCK_URL",
+    "https://m.xm.celoan.cn/service/businessEnvironment/businessFill?redirect=%252F&id=10002",
 )
+# mock_url = os.getenv(
+#     "MOCK_URL",
+#     "https://m.xm.celoan.cn/service/businessEnvironment/businessFill?redirect=%252F&id=10001",
+# )
+
+
+check_other = bool(os.getenv("CHECK_OTHER", False))
+check_index = int(os.getenv("CHECK_INDEX", -3))
+# check_index = int(os.getenv("CHECK_INDEX", 45))
+print(f"###mock_url: {mock_url}")
+print(f"###check_other: {check_other}")
+print(f"###check_index: {check_index}")
 
 # 获取 webdriver 的地址
 executor = os.getenv("WEB_DRIVER_URL")
 if executor is not None:
-    print(f'###command_executor: {executor}')
+    print(f"###command_executor: {executor}")
 else:
-    print('###use local webdriver')
+    print("###use local webdriver")
 
 # 获取投票数量
 votes_string = os.getenv("VOTES", "10000")
 votes = int(votes_string) if votes_string.isdigit() else 10
-print(f'###votes: {votes}')
+print(f"###votes: {votes}")
 
 implicitly_wait_second_str = os.getenv("IMPLICITLY_WAIT_SECOND", "3")
 time_to_wait = (
@@ -33,12 +43,12 @@ time_to_wait = (
 
 
 chrome_options = webdriver.ChromeOptions()
-chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 
 edge_options = webdriver.EdgeOptions()
-edge_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-edge_options.add_argument('--disable-blink-features=AutomationControlled')
+edge_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+edge_options.add_argument("--disable-blink-features=AutomationControlled")
 
 firefox_options = webdriver.FirefoxOptions()
 # firefox_options.add_experimental_option('excludeSwitches', ['enable-automation'])
@@ -46,9 +56,11 @@ firefox_options = webdriver.FirefoxOptions()
 
 driver_factorys = [
     # chrome
-    lambda: webdriver.Chrome(options=chrome_options)
-    if executor is None
-    else webdriver.Remote(command_executor=executor, options=chrome_options),
+    lambda: (
+        webdriver.Chrome(options=chrome_options)
+        if executor is None
+        else webdriver.Remote(command_executor=executor, options=chrome_options)
+    ),
     # edge
     # lambda: webdriver.Edge(options=edge_options)
     # if executor is None
@@ -94,48 +106,15 @@ class Counter(object):
 counter = Counter()
 
 # 创建一个基于 ONNX 的模型的 OCR 识别器
-ocr = OcrByOnnx()
+import ddddocr
+
+ocr = ddddocr.DdddOcr(ocr=True, det=False, show_ad=False)
 
 import random
 
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.remote.webelement import WebElement
+from slide_verify import mock_verify
 
-
-def mock_nc(driver: WebDriver, div: WebElement):
-    # 选择拖动滑块的节点
-    # div = find_nc()
-    # if div is None:
-    #     time.sleep(1)
-    #     div = find_nc()
-    # ------------鼠标滑动操作------------
-    # action = ActionChains(driver)
-    # # 第一步：在滑块处按住鼠标左键
-    # action.click_and_hold(sli_ele)
-    # # 第二步：相对鼠标当前位置进行移动
-    # action.move_by_offset(225, 0)
-    # # 第三步：释放鼠标
-    # action.release()
-    # # 执行动作
-    # action.perform()·
-
-    sleep_seconds = lambda: random.choice([0.1, 0.2, 0.3])
-
-    # div = driver.find_element(by=By.ID, value="nc_1_n1z")
-    ActionChains(driver).click_and_hold(on_element=div).perform()
-
-    time.sleep(sleep_seconds())
-    ActionChains(driver).move_to_element_with_offset(
-        to_element=div, xoffset=30, yoffset=10
-    ).perform()
-    time.sleep(sleep_seconds())
-    ActionChains(driver).move_to_element_with_offset(
-        to_element=div, xoffset=100, yoffset=20
-    ).perform()
-    time.sleep(sleep_seconds())
-    ActionChains(driver).move_to_element_with_offset(
-        to_element=div, xoffset=200, yoffset=50
-    ).release().perform()
+sleep_seconds = lambda: random.choice([0.1, 0.2, 0.3])
 
 
 def run(driver: WebDriver) -> bool:
@@ -153,27 +132,10 @@ def run(driver: WebDriver) -> bool:
     # 隐式等待
     driver.implicitly_wait(time_to_wait)
 
-    # 先等待复选框加载
-    checkboxs = driver.find_elements(by=By.CLASS_NAME, value="van-checkbox")
-
-    if len(checkboxs) == 0:
-        try:
-            nc = driver.find_elements(by=By.ID, value="nc_1_n1z")
-            if len(nc) == 0:
-                print('没有找到滑块验证')
-                print('-------------')
-                print(driver.page_source)
-                return False
-            # 模拟拖动滑块，避开滑块验证
-            mock_nc(driver, nc[0])
-            print('>>>模拟滑块验证成功')
-        except Exception as e:
-            print(e)
-
-    print('-------------')
+    print("-------------")
     checkboxs = driver.find_elements(by=By.CLASS_NAME, value="van-checkbox")
     while len(checkboxs) == 0 and retry_times < 3:
-        print('等待复选框加载...')
+        print("等待复选框加载...")
         driver.refresh()
         time.sleep(1)
         checkboxs = driver.find_elements(by=By.CLASS_NAME, value="van-checkbox")
@@ -183,68 +145,111 @@ def run(driver: WebDriver) -> bool:
         print(driver.page_source)
         return True
 
-    checkboxs = checkboxs[::-1]
+    # 其他区
+    if check_other:
+        checked = [8, 10, 6, 6, 14]
+        last = 0
+        for i in checked:
+            select = checkboxs[random.randint(last, last + i - 1)]
+            last += i
+            # print(f"选择：{select.text}")
+            select.click()
+
     counter.fetch_increment()
 
-    select = checkboxs[4]
-    print(f'选择：{select.text}')
+    select = checkboxs[check_index]
+    print(f"选择：{select.text}")
     select.click()
 
-    img_element = driver.find_element(by=By.CLASS_NAME, value="img")
-    src = img_element.get_attribute('src')
-    # 有时候会出现 src 为空的情况，这里做一个重试
-    if len(src) == 0:
-        time.sleep(1)
-        src = img_element.get_attribute('src')
+    def fill_code(refresh: bool = False):
+        img_element = driver.find_element(by=By.CLASS_NAME, value="img")
+        if refresh:
+            print("重新获取验证码...")
+            img_element.click()
+            time.sleep(1)
 
-    if len(src) == 0:
-        print('重新获取验证码...')
-        img_element.click()
-        src = img_element.get_attribute('src')
+        src = img_element.get_attribute("src")
+        # 有时候会出现 src 为空的情况，这里做一个重试
+        if len(src) == 0:
+            time.sleep(1)
+            src = img_element.get_attribute("src")
 
-    base64_code = src[len('data:image/gif;base64,') :]
-    if len(base64_code) == 0:
-        return False
+        if len(src) == 0:
+            print("重新获取验证码...")
+            img_element.click()
+            src = img_element.get_attribute("src")
 
-    # 将 base64 编码的字符串解码为字节数据
-    image_data = base64.b64decode(base64_code)
-    code = ocr.classification(image_data)
-    if len(code) == 0:
-        return False
+        base64_code = src[len("data:image/gif;base64,") :]
+        if len(base64_code) == 0:
+            return False
 
-    print(f'验证码：{code}')
+        # 将 base64 编码的字符串解码为字节数据
+        image_data = base64.b64decode(base64_code)
+        code = ocr.classification(image_data)
+        if len(code) == 0:
+            return False
+        print(f"验证码：{code}")
+        result = calculate_code(code)
 
-    input = driver.find_element(by=By.NAME, value="randomCode")
-    input.send_keys(code)
+        input = driver.find_element(by=By.NAME, value="randomCode")
+        input.send_keys(result)
+        # submits = driver.find_elements(
+        #     by=By.CLASS_NAME,
+        #     value="submit_btn",
+        # )
+        # if len(submits) == 0:
+        #     return False
+        # submit = submits[0]
+        # submit.click()
 
-    submits = driver.find_elements(
-        by=By.CLASS_NAME,
-        value="submit_btn",
-    )
-    if len(submits) == 0:
-        return False
+    try:
+        fill_code()
+        while True:
+            mock_verify(driver, "")
 
-    submit = submits[0]
-    submit.click()
-    thanks = driver.find_elements(by=By.CLASS_NAME, value="thanks")
-    if len(thanks) > 0:
-        counter.effected_increment()
-        print(f'成功投 {counter.effected_count} 票')
-    else:
+            thanks = driver.find_elements(by=By.CLASS_NAME, value="thanks")
+            if len(thanks) > 0:
+                counter.effected_increment()
+                print(f"成功投 {counter.effected_count} 票")
+                return True
+
+            dlgs = driver.find_elements(
+                by=By.CLASS_NAME, value="van-dialog__message--has-title"
+            )
+            if len(dlgs) > 0:
+                title = dlgs[0].text
+                if title == "验证码错误":
+                    print(">>>验证码错误")
+                    btn = driver.find_element(
+                        by=By.CLASS_NAME, value="van-dialog__confirm"
+                    )
+                    btn.click()
+                    fill_code(refresh=True)
+
+            time.sleep(sleep_seconds())
+
+    except Exception as e:
+        print(e)
         counter.error_increment()
+        return False
 
-    return False
+
+# 验证码计算
+def calculate_code(code: str) -> str:
+    a, b, c = code[0], code[1], code[2]
+    if b == "+":
+        return str(int(a) + int(c))
+    elif b in {"-", "i", "7"}:
+        return str(int(a) - int(c))
+    elif b == "x":
+        return str(int(a) * int(c))
+    elif b in {"/", "l"}:
+        return str(int(a) / int(c))
+    else:
+        return str(int(a) + int(c))
 
 
 class ThreadDriver(threading.Thread):
-    """Call a function after a specified number of seconds:
-
-    t = ThreadDriver(factory)
-    t.start()
-    t.cancel()     # stop the timer's action if it's still waiting
-
-    """
-
     def __init__(self, factory):
         threading.Thread.__init__(self)
         self.factory = factory
@@ -279,7 +284,7 @@ class ThreadDriver(threading.Thread):
                 if run(driver):
                     driver.quit()
                     driver = self.factory()
-                time.sleep(0.7)
+                time.sleep(sleep_seconds())
         finally:
             driver.quit()
 
@@ -309,10 +314,10 @@ def main():
     try:
         run_with_thread()
     finally:
-        print('========================')
-        print(f'总共：{counter.fetch_count} 票')
-        print(f'成功：{counter.effected_count} 票')
-        print(f'失败：{counter.error_count} 票')
+        print("========================")
+        print(f"总共：{counter.fetch_count} 票")
+        print(f"成功：{counter.effected_count} 票")
+        print(f"失败：{counter.error_count} 票")
 
 
 main()
