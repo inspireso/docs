@@ -6,12 +6,15 @@
 用法:
   python3 starmap.py init  <目录>   # 初始化：建 .meta 骨架 + 扫描登记 + 生成索引与星图
   python3 starmap.py build <目录>   # 重建：重新扫描新文件（增量登记）+ 刷新索引与星图
+  python3 starmap.py tags  <目录>   # 导出待补标签清单（Claude subagent 并行补充用）
 
 数据模型:
   .meta/index/ledger.jsonl  权威台账（每条记录 = 一个文件，可手工补充标签/梗概）
   .meta/index/INDEX.md      人读索引（按一级子目录分组）
   .meta/index/rules.md      规则模板（命名/敏感词/台账字段说明）
-  .meta/starmap/            星图引擎（template.html + extra_edges.json 通道）
+  .meta/starmap/extra_edges.json   Claude 补充边通道（构建时合并，reason=llm）
+  .meta/starmap/extra_tags.json    Claude 补充标签通道（构建时覆盖节点 tags）
+  .meta/starmap/todo_tags.json     tags 子命令产物：待补标签清单（按 topic 排序）
   <目录>/starmap.html       星图产物（双击即开）
 """
 import argparse
@@ -42,11 +45,32 @@ SENSITIVE_KEYWORDS = ["密码", "密钥", "token", "账号", "身份证", "银�
                       "体检", "病历", "工资", "合同", "发票", "简历",
                       "secret", "password", "credential", "private"]
 SKIP_NAMES = {".meta", ".git", ".gitkeep", "__pycache__", ".DS_Store", ".Trash"}
+# 可 LLM 通读的文本类（subagent 补标签范围）
+TEXT_FMTS = {"md", "网页", "代码"}
+MAX_TAG_BYTES = 200 * 1024   # 超过 200KB 不推荐 LLM 通读，不列入待补
+MAX_TAGS = 8                 # 单文件标签数量上限（超出截断）
 
 
 def is_sensitive(rel: str) -> bool:
     low = rel.lower()
     return any(kw in low for kw in SENSITIVE_KEYWORDS)
+
+
+def is_hidden_path(rel: str) -> bool:
+    """路径任一段以 . 开头即为隐藏（.claude/、.vscode/、.env 等），构建时忽略。"""
+    return any(part.startswith(".") for part in rel.split("/"))
+
+
+def load_extra(meta_starmap: Path, name: str) -> list:
+    """读 Claude 补充通道（extra_*.json）：缺失/非法 JSON/非 list 一律容错返回 []。"""
+    p = meta_starmap / name
+    if not p.exists():
+        return []
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    return data if isinstance(data, list) else []
 
 
 def load_ledger(meta_index: Path) -> dict:
@@ -78,7 +102,7 @@ def scan_files(root: Path):
         if not p.is_file():
             continue
         rel = str(p.relative_to(root))
-        if any(part in SKIP_NAMES for part in rel.split("/")) or p.name.startswith("."):
+        if any(part in SKIP_NAMES for part in rel.split("/")) or is_hidden_path(rel):
             continue
         if rel == "starmap.html":  # 星图产物，不登记
             continue
@@ -144,8 +168,25 @@ def build_index(root: Path, recs: dict) -> None:
     (root / ".meta" / "index" / "INDEX.md").write_text("\n".join(out), encoding="utf-8")
 
 
-def build_starmap(root: Path, recs: dict) -> None:
-    """渲染星图（数据内嵌，产物在目录根 starmap.html）。"""
+def clean_tags(tags) -> list:
+    """标签清洗：strip → 去空 → 保序去重 → 截断到 MAX_TAGS。"""
+    if not isinstance(tags, list):
+        return []
+    out = []
+    for t in tags:
+        if not isinstance(t, str):
+            continue
+        t = t.strip()
+        if t and t not in out:
+            out.append(t)
+        if len(out) >= MAX_TAGS:
+            break
+    return out
+
+
+def build_starmap(root: Path, recs: dict) -> tuple[int, int, int]:
+    """渲染星图（数据内嵌，产物在目录根 starmap.html）。返回 (标签应用, 标签丢弃, llm 边)。"""
+    tags_applied = tags_dropped = llm_edges = 0
     nodes, node_by_path, edges, seen = [], {}, [], set()
 
     for path, r in recs.items():
@@ -159,6 +200,16 @@ def build_starmap(root: Path, recs: dict) -> None:
             node["synopsis"] = "[敏感件，不读内容]"
         nodes.append(node)
         node_by_path[path] = node
+
+    # Claude 补充标签通道：覆盖节点 tags（来源优先于台账）
+    meta_starmap = root / ".meta" / "starmap"
+    for e in load_extra(meta_starmap, "extra_tags.json"):
+        node = node_by_path.get(e.get("path"))
+        if node is None or node["sensitive"]:
+            tags_dropped += 1
+            continue
+        node["tags"] = clean_tags(e.get("tags"))
+        tags_applied += 1
 
     def add_edge(a, b, reason):
         if a == b:
@@ -185,6 +236,13 @@ def build_starmap(root: Path, recs: dict) -> None:
             for j in range(i + 1, len(grp)):
                 add_edge(grp[i], grp[j], "topic")
 
+    # Claude 补充边通道：reason=llm（正文引用类，add_edge 自带去重，参与 degree 计算）
+    for e in load_extra(meta_starmap, "extra_edges.json"):
+        a, b = e.get("from"), e.get("to")
+        if a in node_by_path and b in node_by_path:
+            add_edge(a, b, "llm")
+            llm_edges += 1
+
     degree = {}
     for e in edges:
         degree[e["from"]] = degree.get(e["from"], 0) + 1
@@ -196,6 +254,29 @@ def build_starmap(root: Path, recs: dict) -> None:
                              "nodes": nodes, "edges": edges}, ensure_ascii=False, indent=1)
     html = TEMPLATE.read_text(encoding="utf-8").replace("__GRAPH_DATA__", graph_json)
     (root / "starmap.html").write_text(encoding="utf-8", data=html)
+    return tags_applied, tags_dropped, llm_edges
+
+
+def export_tag_todo(root: Path, recs: dict) -> list:
+    """导出待补标签清单：文本类 · 非敏感 · 台账无标签 · 未被 extra_tags 覆盖。
+    按 (topic, path) 排序写入 todo_tags.json（subagent 按 topic 相邻分片）。"""
+    meta_starmap = root / ".meta" / "starmap"
+    covered = {e.get("path") for e in load_extra(meta_starmap, "extra_tags.json")}
+    todo = []
+    for r in recs.values():
+        if r.get("sensitive") or r.get("fmt") not in TEXT_FMTS:
+            continue
+        if r.get("tags") or r.get("path") in covered:
+            continue
+        if r.get("bytes", 0) > MAX_TAG_BYTES:
+            continue
+        todo.append({"path": r["path"], "title": r.get("title", ""),
+                     "topic": r.get("topic", ""), "fmt": r.get("fmt", ""),
+                     "bytes": r.get("bytes", 0)})
+    todo.sort(key=lambda x: (x["topic"], x["path"]))
+    out = meta_starmap / "todo_tags.json"
+    out.write_text(json.dumps(todo, ensure_ascii=False, indent=1), encoding="utf-8")
+    return todo
 
 
 def init_kb(root: Path) -> None:
@@ -212,13 +293,16 @@ def init_kb(root: Path) -> None:
         shutil.copy(TEMPLATE, tmpl_dst)
     if not (meta / "starmap" / "extra_edges.json").exists():
         (meta / "starmap" / "extra_edges.json").write_text("[]", encoding="utf-8")
+    if not (meta / "starmap" / "extra_tags.json").exists():
+        (meta / "starmap" / "extra_tags.json").write_text("[]", encoding="utf-8")
     if not (meta / "index" / "ledger.jsonl").exists():
         (meta / "index" / "ledger.jsonl").write_text("", encoding="utf-8")
 
 
 def main():
     ap = argparse.ArgumentParser(description="starmap: 把任意目录变成知识库（不修改原结构）")
-    ap.add_argument("cmd", choices=["init", "build"], help="init=初始化+首次扫描; build=重建索引与星图")
+    ap.add_argument("cmd", choices=["init", "build", "tags"],
+                    help="init=初始化+首次扫描; build=重建索引与星图; tags=导出待补标签清单")
     ap.add_argument("dir", help="目标目录")
     args = ap.parse_args()
 
@@ -226,19 +310,33 @@ def main():
     if not root.is_dir():
         sys.exit(f"错误: {root} 不是目录")
 
+    if args.cmd == "tags":
+        ledger_p = root / ".meta" / "index" / "ledger.jsonl"
+        if not ledger_p.exists():
+            sys.exit("错误: 尚未初始化，请先运行 init 或 build")
+        recs = load_ledger(root / ".meta" / "index")
+        recs = {k: v for k, v in recs.items() if not is_hidden_path(k)}
+        todo = export_tag_todo(root, recs)
+        print(f"📋 待补标签 {len(todo)} 份（文本类 · 非敏感 · 台账无标签 · 未覆盖）")
+        print(f"   清单: {root}/.meta/starmap/todo_tags.json（按 topic 排序，供 subagent 分片）")
+        return
+
     if args.cmd == "init":
         init_kb(root)
     # 共通：扫描 + 增量登记 + 索引 + 星图
     files = scan_files(root)
     recs = load_ledger(root / ".meta" / "index")
     recs, added = sync_ledger(root, files, recs)
+    recs = {k: v for k, v in recs.items() if not is_hidden_path(k)}  # 构建忽略隐藏文件（台账保留历史）
     build_index(root, recs)
-    build_starmap(root, recs)
+    tags_applied, tags_dropped, llm_edges = build_starmap(root, recs)
 
     sens = sum(1 for r in recs.values() if r.get("sensitive"))
     n_edges = sum(1 for r in recs.values() if r.get("related"))
     print(f"✅ {root} 已是知识库")
     print(f"   文件 {len(recs)}（本次新增 {added}）· 敏感件 {sens}")
+    if tags_applied or tags_dropped or llm_edges:
+        print(f"   Claude 补充: 标签 {tags_applied} 条（丢弃 {tags_dropped}）· 边 {llm_edges} 条")
     print(f"   索引: {root}/.meta/index/INDEX.md")
     print(f"   台账: {root}/.meta/index/ledger.jsonl（可手工补标签/梗概/关联）")
     print(f"   星图: {root}/starmap.html（双击即开）")

@@ -11,8 +11,10 @@
 ├── starmap.html            # 星图产物（双击即开）
 └── .meta/                  # 元数据（自动维护）
     ├── index/              # rules.md / INDEX.md / ledger.jsonl
-    └── starmap/            # 星图引擎（template.html + extra_edges.json 通道）
+    └── starmap/            # 星图引擎（template.html + extra_edges.json / extra_tags.json Claude 补充通道）
 ```
+
+> 构建时忽略隐藏文件：`.` 开头的目录/文件（`.claude/`、`.vscode/`、`.env` 等）不登记、不进索引与星图；台账保留历史记录。
 
 ## 台账 ledger.jsonl 记录字段
 
@@ -25,23 +27,33 @@
 
 - `action`: `add` | `move` | `update` | `delete`（可据此做 undo）
 - `topic` = 文件所在子目录（自动）；`type`/`subject`/`tags`/`related`/`synopsis` 可手工补充（AI 或人），星图重建后生效
+- `tags` 亦可由 Claude 经 `.meta/starmap/extra_tags.json` 通道补充，构建时覆盖台账值
 - 敏感件：`sensitive: true`，`synopsis` 打码为 `[敏感件，不读内容]`（命中敏感词库的文件自动处理）
 
 ## 敏感词库（命中即打码登记，不读内容）
 
 `密码` `密钥` `token` `账号` `身份证` `银行卡` `体检` `病历` `工资` `合同` `发票` `简历` `secret` `password` `credential` `private`
 
+## Claude 补充通道（`.meta/starmap/`，构建时合并）
+
+- `extra_edges.json`：`[{"from": "a.md", "to": "b.md"}]`，构建时以 `reason=llm` 建边（正文引用类）。
+- `extra_tags.json`：`[{"path": "a.md", "tags": ["标签", ...]}]`，构建时覆盖节点标签；自动清洗（去重/去空/上限 8 个）；path 不在台账或敏感件时丢弃；非法 JSON 安全跳过。
+- `todo_tags.json`：`starmap.py tags <目录>` 的产物，待补标签清单（按 topic 排序），供 Claude 并行 subagent 分片读取。
+
+改标签 = 改 `extra_tags.json`（或删条目后改台账 `tags`），两份来源以通道为准。
+
 ## 关联规则（AI 建边时按序）
 
 1. **显式声明**：台账 `related` 字段
 2. **专题归属**：同 `topic`（同目录）
-3. **正文引用**：正文引用/提及的其他文件（需人工或 LLM 补充）
-4. **标题相似度**：标题高度相似（兜底）
+3. **正文引用**：正文引用/提及的其他文件（经 `extra_edges.json` 通道由 Claude 补充，reason=llm）
+4. **标题相似度**：标题高度相似（兜底，代码未实现，占位）
 
 ## 重建
 
 ```bash
-python3 <starmap-skill目录>/scripts/starmap.py build <目录>
+python3 <starmap-skill目录>/scripts/starmap.py build <目录>   # 增量登记 + 刷新索引与星图
+python3 <starmap-skill目录>/scripts/starmap.py tags  <目录>   # 导出待补标签清单（subagent 并行补充用）
 ```
 
 > `<starmap-skill目录>` 指 starmap skill 的安装位置（Claude 调用时通过 `${CLAUDE_SKILL_DIR}` 自动定位）。
