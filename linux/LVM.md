@@ -1,5 +1,7 @@
 # LVM操作
 
+> **场景区分**：本文档覆盖「添加新磁盘到 VG」场景（pvcreate → vgextend）。如果是「扩展现有磁盘容量」（VMware 扩容 → growpart → pvresize），见 [linux.md → 扩容硬盘](linux.md#扩容硬盘)。
+
 ## 常用命令
 
 - fdisk -l

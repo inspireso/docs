@@ -538,9 +538,9 @@ ssh -Cg -L 8081:172.16.0.1:80 root@remote-ip
 ## selinux
 
 ```sh
-永久方法 – 需要重启服务器
-修改/etc/selinux/config文件中设置SELINUX=disabled ，然后重启服务器。
-#临时方法 – 设置系统参数
+# 永久方法 – 需要重启服务器
+# 修改/etc/selinux/config文件中设置SELINUX=disabled ，然后重启服务器。
+# 临时方法 – 设置系统参数
 setenforce 0
 #setenforce 1 设置SELinux 成为enforcing模式
 #setenforce 0 设置SELinux 成为permissive模式
@@ -665,8 +665,80 @@ fg %1
 
 ### rsync
 
+#### 常用参数说明
+
+| 参数 | 说明 |
+|------|------|
+| -a | 归档模式，递归并保留权限、时间戳、符号链接等属性 |
+| -v | 显示详细传输过程 |
+| -z | 传输过程中压缩数据，节省带宽 |
+| -P | 显示进度并保留部分传输的文件，等同于 --progress --partial |
+| -h | 以人类可读格式显示大小 |
+| --delete | 删除目标端多余的文件，保持两端完全同步 |
+| --exclude | 排除匹配的文件或目录 |
+| --bwlimit | 限制传输带宽（KB/s） |
+| --remove-source-files | 同步完成后删除源文件 |
+
+#### 本地备份
+
 ```sh
-rsync -auvzP --remove-source-files  chia@chia-003:/data/farm/*/*.plot /data/farm/sdc/
+# 基础本地同步：将 /data 目录同步到 /backup
+rsync -avh /data /backup
+
+# 增量同步：只传输变化的文件
+rsync -avh --delete /data /backup
+
+# 排除特定文件或目录
+rsync -avh --exclude '*.log' --exclude 'tmp/' /data /backup
+
+# 同步单个文件
+rsync -avh /data/file.txt /backup/
+
+# 查看会传输哪些文件（dry-run 模式）
+rsync -avhn --delete /data /backup
+```
+
+#### 远程备份
+
+```sh
+# Push 模式：本地推送到远程服务器
+rsync -avhz /data user@remote-host:/backup
+
+# Pull 模式：从远程服务器拉取到本地
+rsync -avhz user@remote-host:/data /backup
+
+# 使用 SSH 指定端口
+rsync -avhz -e 'ssh -p 2222' /data user@remote-host:/backup
+
+# 带带宽限制的远程同步（限制 10MB/s）
+rsync -avhz --bwlimit=10240 /data user@remote-host:/backup
+
+# 保持完全同步（删除目标端多余文件）
+rsync -avhz --delete /data user@remote-host:/backup
+
+# 排除大文件或特定类型
+rsync -avhz --exclude '*.iso' --exclude 'videos/' /data user@remote-host:/backup
+
+# 远程同步并删除源文件（迁移场景）
+rsync -avhz --remove-source-files user@remote-host:/data/* /local-backup/
+```
+
+#### 注意事项
+
+```sh
+# 源路径末尾 "/" 的含义差异：
+# 有 "/"：复制目录内容到目标
+# 无 "/"：复制目录本身到目标
+
+# 示例对比
+rsync -avh /data /backup      # 创建 /backup/data 目录
+rsync -avh /data/ /backup      # 将 /data 的内容直接复制到 /backup
+
+# 大文件传输建议：使用 --partial 保留部分传输的文件，断点续传
+rsync -avhP --partial-dir=/tmp/partial /data user@remote-host:/backup
+
+# 传输前预览（dry-run），避免误删除
+rsync -avhn --delete /data /backup
 ```
 
 ## RPM
@@ -731,8 +803,8 @@ echo "overlay" > /etc/modules-load.d/overlay.conf
 modprobe overlay
 lsmod | grep overlay
 
-$ sed -i -e '/^ExecStart=/ s/$/ --storage-driver=overlay/' /usr/lib/systemd/system/docker.service \
-rm /var/lib/docker -rf
+sed -i -e '/^ExecStart=/ s/$/ --storage-driver=overlay/' /usr/lib/systemd/system/docker.service
+rm -rf /var/lib/docker
 ```
 
 ## cifs/smb
@@ -828,7 +900,7 @@ openssl x509  -noout -text -in xxx.pem
 #生成证书
 penssl genrsa -out kubelet-key.pem 2048
 openssl req -new -key kubelet-key.pem -out kubelet.csr -subj "/CN=kubelet-key" -config worker-openssl.cnf
-openssl x509 -req -in kubelet.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out kubelet.pem -days 365 -extensions v3_req -extfile worker-openssl.cnf -rsa256
+openssl x509 -req -in kubelet.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out kubelet.pem -days 365 -extensions v3_req -extfile worker-openssl.cnf -sha256
 ```
 
 ## cfssl
@@ -1017,11 +1089,116 @@ sudo update-alternatives --config editor
 
 ## 扩容硬盘
 
+> 以 192.168.100.88 为例：VMware 虚拟机磁盘从 200G → 500G，分区结构为 GPT + LVM（PV→VG→LV→ext4）。
+
+### 排查硬盘空间不足
+
 ```sh
-type growpart || yum install -y cloud-utils-growpart
-LC_ALL=en_US.UTF-8 growpart /dev/sda 1
-resize2fs /dev/sda1
+# 1. 查看各挂载点磁盘使用情况
+df -h
+
+# 2. 查看 inode 使用情况（小文件耗尽 inode 也会报 "No space left on device"）
+df -i
+
+# 3. 查看块设备结构和挂载关系
+lsblk
+lsblk -f          # 含文件系统类型和 UUID
+
+# 4. 查看磁盘分区详情
+fdisk -l          # 注意 GPT PMBR size mismatch 警告——说明磁盘已扩容但分区未更新
+
+# 5. 如果是 LVM，查看 PV → VG → LV 结构
+pvdisplay          # 物理卷
+vgdisplay          # 卷组
+lvdisplay          # 逻辑卷
+pvs && vgs && lvs  # 精简输出
+
+# 6. 找出占用空间大的目录
+du -h --max-depth=1 /  2>/dev/null | sort -hr | head -20
+
+# 7. 查看当前磁盘和分区的精确大小
+grep -v 'loop\|dm-' /proc/partitions | awk '{printf "%s: %.1fG\n", $4, $3*512/1024/1024/1024}'
 ```
+
+### 判断扩容路径
+
+根据 `lsblk -f` 输出的结构决定操作顺序：
+
+| 结构类型 | 操作顺序 |
+|----------|----------|
+| 分区→ext4/xfs（无 LVM） | 扩容分区 → resize2fs/xfs_growfs |
+| 分区→PV→VG→LV→ext4/xfs | 扩容分区 → pvresize → lvextend → resize2fs/xfs_growfs |
+
+### 场景一：无 LVM（直接分区 + 文件系统）
+
+```sh
+# 1. 安装 growpart（如已安装则跳过）
+type growpart || yum install -y cloud-utils-growpart   # CentOS/RHEL
+type growpart || apt install -y cloud-guest-utils       # Debian/Ubuntu
+
+# 2. 扩容分区（3 是分区号，对应 /dev/sda3）
+LC_ALL=en_US.UTF-8 growpart /dev/sda 3
+
+# 3. 扩容文件系统
+resize2fs /dev/sda3     # ext4
+xfs_growfs /mountpoint  # xfs（需已挂载）
+```
+
+### 场景二：LVM 架构（分区→PV→VG→LV）
+
+适用条件：`lsblk -f` 显示分区 `FSTYPE=LVM2_member`，其下有 `xx--vg-xx--lv`。
+
+> **场景区分**：这里是「扩展现有磁盘」（growpart → pvresize）。如果是「添加新磁盘到 VG」（pvcreate → vgextend），见 [LVM.md](LVM.md)。
+
+以 192.168.100.88 为例，结构为 `sda3(LVM2_member)→ubuntu-vg→lv--0(ext4)`：
+
+```sh
+# ========== 第一步：VMware 层面扩容（在 vSphere 客户端操作，非命令行）==========
+# 编辑虚拟机设置 → 将硬盘从 200G 改为 500G
+# 完成后在虚拟机内验证：
+fdisk -l /dev/sda | head -5
+# 出现 "GPT PMBR size mismatch" 说明磁盘已扩容，只差分区未更新
+
+# ========== 第二步：扩容分区 ==========
+LC_ALL=en_US.UTF-8 growpart /dev/sda 3
+
+# 验证分区已扩容：
+fdisk -l /dev/sda | grep sda3
+# 输出示例：/dev/sda3  4198400 1048575966  1044377567  498G  Linux filesystem
+
+# ========== 第三步：扩容 PV（让 LVM 识别分区变大） ==========
+pvresize /dev/sda3
+
+# ========== 第四步：扩容 LV（把空闲空间全部分配） ==========
+lvextend -l +100%FREE /dev/mapper/ubuntu--vg-lv--0
+
+# ========== 第五步：扩容文件系统 ==========
+resize2fs /dev/mapper/ubuntu--vg-lv--0     # ext4（支持在线扩容）
+# 如果是 xfs：
+# xfs_growfs /                              # xfs 传挂载点而非设备路径
+
+# ========== 验证 ==========
+df -h /          # 确认容量已增加
+lsblk            # 确认整体链路
+```
+
+### 附：无 growpart 时手动扩容分区（parted）
+
+```sh
+parted /dev/sda
+# 在 parted 交互界面中：
+print free      # 查看当前分区和空闲空间
+resizepart 3    # 选择分区 3
+100%            # 使用全部可用空间
+quit
+```
+
+### 注意事项
+
+- **提前做快照**：VMware 层面操作分区表前务必打快照，扩容失败可快速回滚。
+- **GPT 分区表**：扩容后 `fdisk` 会提示 "The backup GPT table is not on the end of the device"，`growpart`/`parted` 写入分区表时会自动修复。
+- **xfs vs ext4**：xfs 只能在线扩容不能缩小；`xfs_growfs` 必须传入挂载点（如 `/`），不能传设备路径。
+- **/boot 分区**：growpart 无法在线扩容 `/boot`（通常在 `/dev/sda2`），需进入救援模式操作。
 
 ## FAQ
 
