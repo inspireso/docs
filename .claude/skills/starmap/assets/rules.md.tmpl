@@ -1,0 +1,49 @@
+# 索引规则
+
+> starmap 自动生成。本规则文件可自由修改，索引与星图据此维护。
+> 原目录结构**未被修改**：本规则/索引/台账/星图引擎全部在 `.meta/` 下。
+
+## 目录结构
+
+```
+<目标目录>/                  # 原文件原结构，不动
+├── (你的文件…)
+├── starmap.html            # 星图产物（双击即开）
+└── .meta/                  # 元数据（自动维护）
+    ├── index/              # rules.md / INDEX.md / ledger.jsonl
+    └── starmap/            # 星图引擎（template.html + extra_edges.json 通道）
+```
+
+## 台账 ledger.jsonl 记录字段
+
+```json
+{"ts": "2026-08-13T00:00:00+08:00", "action": "add", "path": "子目录/文件名.pdf",
+ "title": "标题", "type": "", "subject": "", "topic": "子目录名",
+ "tags": [], "related": [], "synopsis": "[自动登记]",
+ "date": "2026-08-13", "bytes": 12345, "fmt": "pdf"}
+```
+
+- `action`: `add` | `move` | `update` | `delete`（可据此做 undo）
+- `topic` = 文件所在子目录（自动）；`type`/`subject`/`tags`/`related`/`synopsis` 可手工补充（AI 或人），星图重建后生效
+- 敏感件：`sensitive: true`，`synopsis` 打码为 `[敏感件，不读内容]`（命中敏感词库的文件自动处理）
+
+## 敏感词库（命中即打码登记，不读内容）
+
+`密码` `密钥` `token` `账号` `身份证` `银行卡` `体检` `病历` `工资` `合同` `发票` `简历` `secret` `password` `credential` `private`
+
+## 关联规则（AI 建边时按序）
+
+1. **显式声明**：台账 `related` 字段
+2. **专题归属**：同 `topic`（同目录）
+3. **正文引用**：正文引用/提及的其他文件（需人工或 LLM 补充）
+4. **标题相似度**：标题高度相似（兜底）
+
+## 重建
+
+```bash
+python3 <starmap-skill目录>/scripts/starmap.py build <目录>
+```
+
+> `<starmap-skill目录>` 指 starmap skill 的安装位置（Claude 调用时通过 `${CLAUDE_SKILL_DIR}` 自动定位）。
+
+新建文件后重跑一次，索引与星图自动增量更新。

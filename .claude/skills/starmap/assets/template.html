@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识库星图</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+  :root {
+    --bg: #23242b;
+    --panel: #2d2e37;
+    --panel-hover: #3a3b47;
+    --text: #d8d6cf;
+    --text-dim: #9a9892;
+    --accent: #c9b8a7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex;
+  }
+  /* 主图区 */
+  #graph { flex: 1; height: 100vh; }
+  /* 右栏 */
+  #sidebar {
+    width: 300px; height: 100vh; overflow-y: auto;
+    background: var(--panel); border-left: 1px solid #3a3b47;
+    padding: 16px 14px;
+  }
+  #sidebar h1 { font-size: 15px; font-weight: 600; color: var(--accent); margin-bottom: 10px; letter-spacing: 1px; }
+  /* 搜索框 */
+  #search {
+    width: 100%; padding: 6px 10px; margin-bottom: 4px;
+    background: var(--bg); border: 1px solid #3a3b47; border-radius: 6px;
+    color: var(--text); font-size: 12px; outline: none;
+  }
+  #search:focus { border-color: var(--accent); }
+  #search::placeholder { color: var(--text-dim); }
+  #sidebar h2 {
+    font-size: 11px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin: 18px 0 8px; border-bottom: 1px solid #3a3b47; padding-bottom: 4px;
+  }
+  /* 切片按钮 */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 12px; padding: 3px 10px; border-radius: 12px;
+    background: var(--panel-hover); color: var(--text-dim);
+    cursor: pointer; user-select: none; border: 1px solid transparent;
+    transition: all .15s;
+  }
+  .chip:hover { color: var(--text); }
+  .chip.active { background: #8d8f9c; color: #23242b; border-color: #a9abb8; }
+  .chip.more { border: 1px dashed #4a4b56; font-size: 11px; color: var(--text-dim); }
+  .chip.more:hover { color: var(--accent); border-color: var(--accent); }
+  /* 图例（可点击过滤） */
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 12px; color: var(--text-dim); }
+  .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; user-select: none; transition: all .15s; }
+  .legend-item:hover { background: var(--panel-hover); color: var(--text); }
+  .legend-item.active { background: #8d8f9c; color: #23242b; border-color: #a9abb8; }
+  .legend-item .count { margin-left: auto; font-size: 11px; opacity: .7; }
+  /* 详情面板 */
+  #detail { display: none; }
+  #detail.show { display: block; }
+  #detail .close { float: right; cursor: pointer; color: var(--text-dim); font-size: 13px; }
+  #detail .close:hover { color: var(--text); }
+  #detail h3 { font-size: 14px; color: var(--accent); margin-bottom: 6px; word-break: break-all; }
+  #detail .row { font-size: 12px; color: var(--text-dim); margin: 3px 0; word-break: break-all; }
+  #detail .row b { color: var(--text); font-weight: 500; margin-right: 6px; }
+  #detail .synopsis { font-size: 12px; color: var(--text); line-height: 1.6; margin-top: 8px; padding: 8px 10px; background: var(--bg); border-radius: 6px; }
+  #detail .tags { margin-top: 8px; }
+  #detail .tag { display: inline-block; font-size: 11px; padding: 1px 8px; margin: 2px 4px 2px 0; border-radius: 10px; background: #3a3b47; color: var(--text-dim); }
+  #detail a.path { color: #8fa5c9; text-decoration: none; font-size: 11px; }
+  #detail a.path:hover { text-decoration: underline; }
+  #stats { font-size: 11px; color: var(--text-dim); margin-top: 14px; padding-top: 10px; border-top: 1px solid #3a3b47; }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<div id="sidebar">
+  <h1>✦ 知识库星图</h1>
+
+  <input type="search" id="search" placeholder="搜索标题 / 标签 / 路径…（Esc 清空）">
+
+  <div class="sec" id="sec-topic"><h2>切片 · 主题</h2><div class="chips" id="slicer-topic"></div></div>
+  <div class="sec" id="sec-subject"><h2>切片 · 主体</h2><div class="chips" id="slicer-subject"></div></div>
+  <div class="sec" id="sec-type"><h2>切片 · 类型</h2><div class="chips" id="slicer-type"></div></div>
+  <div class="sec" id="sec-tag"><h2>切片 · 标签</h2><div class="chips" id="slicer-tag"></div></div>
+
+  <div class="sec" id="sec-legend"><h2>图例 · 格式</h2><div class="legend" id="legend"></div></div>
+
+  <h2>详情</h2>
+  <div id="detail"></div>
+
+  <div id="stats"></div>
+</div>
+
+<script>
+const GRAPH = __GRAPH_DATA__;
+// docs/ 根绝对路径（构建时注入），用于拼接 file:// 打开本地文件
+const ROOT = GRAPH.root || "";
+
+// 莫兰迪色板：颜色 = 文件格式
+const PALETTE = {
+  "md":    { bg: "#8FA58D", border: "#6d826b" },
+  "网页":   { bg: "#7D8CA3", border: "#5d6d84" },
+  "pdf":   { bg: "#9B8EA8", border: "#7a6e87" },
+  "excel": { bg: "#C0A980", border: "#9d8964" },
+  "图片":   { bg: "#C4A29E", border: "#a3827e" },
+  "音频":   { bg: "#8FB0B0", border: "#6f8f8f" },
+  "视频":   { bg: "#C79A7B", border: "#a57b5e" },
+  "代码":   { bg: "#6E7F8D", border: "#52616e" },
+  "其他":   { bg: "#A8A29E", border: "#87817d" }
+};
+// 边样式：reason → 颜色/线型
+const EDGE_STYLE = {
+  "explicit": { color: "#c9b8a7", width: 2.0, dashes: false },  // 显式声明
+  "topic":    { color: "#7d8ca3", width: 1.2, dashes: false },  // 专题归属
+  "cite":     { color: "#9b8ea8", width: 1.0, dashes: [6,4] },  // 正文引用
+  "similar":  { color: "#5f6068", width: 0.7, dashes: [2,4] },  // 标题相似
+  "llm":      { color: "#c79a7b", width: 1.6, dashes: false }   // Claude 补充
+};
+const REASON_LABEL = { explicit: "显式声明", topic: "专题归属", cite: "正文引用", similar: "标题相似", llm: "Claude 补充" };
+
+// 节点大小：关联数 + 文件大小 → 信息量
+function nodeSize(n) {
+  return Math.min(30, Math.max(10, 10 + n.degree * 2.5 + Math.log2(n.bytes + 1) * 1.2));
+}
+
+// ---- 组装数据 ----
+const nodes = GRAPH.nodes.map(n => {
+  const pal = PALETTE[n.fmt] || PALETTE["其他"];
+  return {
+    id: n.id, label: n.title,
+    shape: "dot", size: nodeSize(n),
+    color: { background: pal.bg, border: pal.border, highlight: { background: pal.bg, border: "#fff" } },
+    font: { color: "#d8d6cf", size: 12, face: "PingFang SC" },
+    title: n.title,  // tooltip
+    _meta: n
+  };
+});
+const edges = GRAPH.edges.map(e => {
+  const st = EDGE_STYLE[e.reason] || EDGE_STYLE.similar;
+  return {
+    from: e.from, to: e.to,
+    color: { color: st.color, highlight: st.color },
+    width: st.width, dashes: st.dashes,
+    title: REASON_LABEL[e.reason] || e.reason
+  };
+});
+
+const container = document.getElementById("graph");
+const network = new vis.Network(container, { nodes, edges }, {
+  physics: { solver: "forceAtlas2Based", forceAtlas2Based: { gravitationalConstant: -60, centralGravity: 0.008, springLength: 130, springConstant: 0.05, damping: 0.5 }, stabilization: { iterations: 300 } },
+  interaction: { hover: true, tooltipDelay: 200 },
+  nodes: { borderWidth: 1.5 },
+  edges: { smooth: { type: "continuous" } }
+});
+window.NETWORK = network; // 调试/集成用
+
+// ---- 切片逻辑 ----
+const state = { topic: new Set(), subject: new Set(), type: new Set(), tag: new Set(), format: new Set(), search: "" };
+function applyFilter() {
+  const q = state.search;
+  const keep = new Set();
+  nodes.forEach(n => {
+    const m = n._meta;
+    const okTopic  = state.topic.size  === 0 || state.topic.has(m.topic);
+    const okSubj   = state.subject.size === 0 || state.subject.has(m.subject);
+    const okType   = state.type.size   === 0 || state.type.has(m.type);
+    const okTag    = state.tag.size    === 0 || (m.tags || []).some(t => state.tag.has(t));
+    const okFmt    = state.format.size === 0 || state.format.has(m.fmt);
+    const okSearch = !q || (m.title || "").toLowerCase().includes(q)
+      || (m.path || "").toLowerCase().includes(q)
+      || (m.tags || []).some(t => (t || "").toLowerCase().includes(q))
+      || (m.synopsis || "").toLowerCase().includes(q);
+    if (okTopic && okSubj && okType && okTag && okFmt && okSearch) keep.add(n.id);
+  });
+  const edgeSet = edges.filter(e => keep.has(e.from) && keep.has(e.to));
+  network.setData({ nodes: nodes.filter(n => keep.has(n.id)), edges: edgeSet });
+  document.getElementById("stats").innerHTML =
+    `当前显示 ${keep.size}/${nodes.length} 节点 · ${edgeSet.length}/${edges.length} 条边`;
+}
+function mkChip(value, dim, box, hidden) {
+  const el = document.createElement("span");
+  el.className = "chip";
+  el.textContent = value;
+  el.dataset.v = value;
+  if (state[dim].has(value)) el.classList.add("active");
+  el.onclick = () => {
+    const set = state[dim];
+    if (set.has(value)) { set.delete(value); el.classList.remove("active"); }
+    else { set.add(value); el.classList.add("active"); }
+    applyFilter();
+  };
+  return el;
+}
+// 维度切片：默认显示前 LIMIT 个（激活中的永远置顶可见），其余收进"更多"
+function buildSlicer(dim, containerId, LIMIT = 8) {
+  const values = [...new Set(GRAPH.nodes.map(n => n[dim]).filter(v => v != null && v !== ""))].sort();
+  const box = document.getElementById(containerId);
+  box.innerHTML = "";
+  // 维度无数据时隐藏整个区块
+  document.getElementById("sec-" + dim).style.display = values.length ? "" : "none";
+  const hidden = [];
+  let shown = 0;
+  // 激活中的优先展示
+  values.filter(v => state[dim].has(v)).forEach(v => box.appendChild(mkChip(v, dim)));
+  values.filter(v => !state[dim].has(v)).forEach(v => {
+    if (shown < LIMIT) { box.appendChild(mkChip(v, dim)); shown++; }
+    else hidden.push(v);
+  });
+  if (hidden.length) {
+    const more = document.createElement("span");
+    more.className = "chip more";
+    more.textContent = `更多 ${hidden.length} ▾`;
+    more.onclick = () => {
+      const expanded = more.textContent.includes("▴");
+      if (expanded) {
+        // 收起：只移除未激活的隐藏值，激活中的保留可见
+        hidden.filter(v => !state[dim].has(v)).forEach(v => box.querySelector(`.chip[data-v="${CSS.escape(v)}"]`)?.remove());
+        more.textContent = `更多 ${hidden.length} ▾`;
+      } else {
+        hidden.forEach(v => box.appendChild(mkChip(v, dim)));
+        more.textContent = "收起 ▴";
+      }
+    };
+    box.appendChild(more);
+  }
+}
+// 标签维度：平铺所有标签，同样限高折叠
+function buildTagSlicer() {
+  const values = [...new Set(GRAPH.nodes.flatMap(n => n.tags || []))].sort();
+  const box = document.getElementById("slicer-tag");
+  box.innerHTML = "";
+  document.getElementById("sec-tag").style.display = values.length ? "" : "none";
+  const hidden = [];
+  let shown = 0;
+  values.filter(v => state.tag.has(v)).forEach(v => box.appendChild(mkChip(v, "tag")));
+  values.filter(v => !state.tag.has(v)).forEach(v => {
+    if (shown < 12) { box.appendChild(mkChip(v, "tag")); shown++; }
+    else hidden.push(v);
+  });
+  if (hidden.length) {
+    const more = document.createElement("span");
+    more.className = "chip more";
+    more.textContent = `更多 ${hidden.length} ▾`;
+    more.onclick = () => {
+      const expanded = more.textContent.includes("▴");
+      if (expanded) {
+        hidden.filter(v => !state.tag.has(v)).forEach(v => box.querySelector(`.chip[data-v="${CSS.escape(v)}"]`)?.remove());
+        more.textContent = `更多 ${hidden.length} ▾`;
+      } else {
+        hidden.forEach(v => box.appendChild(mkChip(v, "tag")));
+        more.textContent = "收起 ▴";
+      }
+    };
+    box.appendChild(more);
+  }
+}
+
+// ---- 详情面板 ----
+const detail = document.getElementById("detail");
+function showDetail(p) {
+  if (p.nodes.length === 0) { detail.classList.remove("show"); return; }
+  const n = nodes.find(x => x.id === p.nodes[0]);
+  const m = n._meta;
+  const relList = edges.filter(e => e.from === n.id || e.to === n.id)
+    .map(e => {
+      const other = nodes.find(x => x.id === (e.from === n.id ? e.to : e.from));
+      return other ? `<a href="javascript:void(0)" class="rel" data-id="${other.id}">${other.label}</a><span class="rlabel">（${REASON_LABEL[e.title] || e.title}）</span>` : "";
+    });
+  detail.classList.add("show");
+  detail.innerHTML = `
+    <span class="close">✕ 关闭</span>
+    <h3>${m.title}</h3>
+    <div class="row"><b>类型</b>${m.type || "-"}　<b>主体</b>${m.subject || "-"}　<b>主题</b>${m.topic || "-"}</div>
+    <div class="tags">${(m.tags || []).map(t => `<span class="tag">${t}</span>`).join("")}</div>
+    <div class="synopsis">${m.synopsis || ""}</div>
+    <div class="row" style="margin-top:8px"><b>关联（${relList.length}）</b></div>
+    <div class="row">${relList.join("<br>") || "无"}</div>
+    <div class="row" style="margin-top:8px"><b>路径</b></div>
+    <div class="row"><a class="path" href="file://${ROOT}${m.path}" title="在本地打开">${m.path}</a></div>
+  `;
+  detail.querySelector(".close").onclick = () => detail.classList.remove("show");
+  detail.querySelectorAll(".rel").forEach(a => a.onclick = () => {
+    const target = nodes.find(x => x.id === Number(a.dataset.id));
+    if (target) { network.selectNodes([target.id], { selectEvent: true }); network.focus(target.id, { scale: 1.2, animation: true }); }
+  });
+}
+network.on("click", showDetail);
+network.on("select", showDetail);
+
+// ---- 图例：格式可点击过滤（多选 = 并集）----
+function buildLegend() {
+  const box = document.getElementById("legend");
+  box.innerHTML = "";
+  const counts = GRAPH.nodes.reduce((acc, n) => (acc[n.fmt] = (acc[n.fmt] || 0) + 1, acc), {});
+  document.getElementById("sec-legend").style.display = Object.keys(counts).length ? "" : "none";
+  Object.entries(PALETTE).forEach(([k, v]) => {
+    if (!(k in counts)) return; // 无此格式文档不显示
+    const el = document.createElement("div");
+    el.className = "legend-item";
+    if (state.format.has(k)) el.classList.add("active");
+    el.innerHTML = `<span class="swatch" style="background:${v.bg}"></span>${k}<span class="count">${counts[k]}</span>`;
+    el.onclick = () => {
+      if (state.format.has(k)) { state.format.delete(k); el.classList.remove("active"); }
+      else { state.format.add(k); el.classList.add("active"); }
+      applyFilter();
+    };
+    box.appendChild(el);
+  });
+}
+
+// ---- 搜索框 ----
+const searchInput = document.getElementById("search");
+searchInput.addEventListener("input", e => {
+  state.search = e.target.value.trim().toLowerCase();
+  applyFilter();
+});
+searchInput.addEventListener("keydown", e => {
+  if (e.key === "Escape") { searchInput.value = ""; state.search = ""; applyFilter(); }
+});
+
+// ---- 初始化 ----
+buildSlicer("topic", "slicer-topic");
+buildSlicer("subject", "slicer-subject");
+buildSlicer("type", "slicer-type");
+buildTagSlicer();
+buildLegend();
+const deg = Object.entries(GRAPH.nodes.reduce((acc, n) => (acc[n.fmt] = (acc[n.fmt] || 0) + 1, acc), {}));
+document.getElementById("stats").innerHTML =
+  `共 ${GRAPH.nodes.length} 节点 · ${GRAPH.edges.length} 条边<br>格式分布：${deg.map(([k, v]) => `${k} ${v}`).join(" · ")}`;
+</script>
+</body>
+</html>
