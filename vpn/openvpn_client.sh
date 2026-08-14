@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 set -e
 
-# Usage: ovpn.sh create|build [-p <password>] <username>
-# 密码规则：默认 用户名@随机8位密码，可通过 -p 指定
+# Usage: ovpn.sh create|build [--nopass] [-p <password>] <username>
+# 密码规则：默认 用户名@随机8位密码，可通过 -p 指定，--nopass 创建无密码证书
 
 if [ -z "$1" ]; then
-  echo "Usage: ovpn.sh create|build [-p <password>] <username>"
+  echo "Usage: ovpn.sh create|build [--nopass] [-p <password>] <username>"
   echo ""
   echo "Commands:"
-  echo "  create  - 生成客户端证书（带密码）并创建配置文件"
+  echo "  create  - 生成客户端证书并创建配置文件"
   echo "  build   - 仅创建配置文件（证书已存在）"
   echo ""
   echo "Options:"
   echo "  -p <password>  - 指定密码（默认自动生成）"
+  echo "  --nopass       - 创建无密码保护的证书（私钥不加密）"
   echo ""
   echo "密码规则：默认 用户名@随机8位密码"
   exit 1
@@ -23,6 +24,7 @@ ACTION=""
 OVPN_USER=""
 CUSTOM_PASSWORD=""
 CA_PASSWORD_INPUT=""
+NOPASS=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -46,6 +48,10 @@ while [ $# -gt 0 ]; do
       CA_PASSWORD_INPUT="$2"
       shift 2
       ;;
+    --nopass)
+      NOPASS=true
+      shift
+      ;;
     *)
       if [ -z "$OVPN_USER" ]; then
         OVPN_USER="$1"
@@ -60,7 +66,7 @@ done
 
 if [ -z "$ACTION" ] || [ -z "$OVPN_USER" ]; then
   echo "Error: Missing action or username"
-  echo "Usage: ovpn.sh create|build [-p <password>] <username>"
+  echo "Usage: ovpn.sh create|build [--nopass] [-p <password>] <username>"
   exit 1
 fi
 
@@ -98,8 +104,11 @@ if [ "$ACTION" == "create" ]; then
     exit 1
   fi
 
-  # 设置密码：自定义或随机生成
-  if [ -n "$CUSTOM_PASSWORD" ]; then
+  # 设置密码：自定义、随机生成、或无密码
+  if [ "$NOPASS" = true ]; then
+    USER_PASSWORD=""
+    echo "创建无密码证书（私钥不加密）"
+  elif [ -n "$CUSTOM_PASSWORD" ]; then
     USER_PASSWORD="$CUSTOM_PASSWORD"
     echo "使用指定密码: $USER_PASSWORD"
   else
@@ -111,15 +120,24 @@ if [ "$ACTION" == "create" ]; then
   echo "生成客户端证书..."
   export EASYRSA_BATCH=yes
   export EASYRSA_PASSIN="pass:$CA_PASSWORD"
-  export EASYRSA_PASSOUT="pass:$USER_PASSWORD"
 
-  if ! ./easyrsa build-client-full "$OVPN_USER" 2>&1; then
-    echo "Error: Failed to generate certificate"
-    unset EASYRSA_BATCH EASYRSA_PASSIN EASYRSA_PASSOUT
-    exit 1
+  if [ "$NOPASS" = true ]; then
+    if ! ./easyrsa build-client-full "$OVPN_USER" nopass 2>&1; then
+      echo "Error: Failed to generate certificate"
+      unset EASYRSA_BATCH EASYRSA_PASSIN
+      exit 1
+    fi
+  else
+    export EASYRSA_PASSOUT="pass:$USER_PASSWORD"
+    if ! ./easyrsa build-client-full "$OVPN_USER" 2>&1; then
+      echo "Error: Failed to generate certificate"
+      unset EASYRSA_BATCH EASYRSA_PASSIN EASYRSA_PASSOUT
+      exit 1
+    fi
+    unset EASYRSA_PASSOUT
   fi
 
-  unset EASYRSA_BATCH EASYRSA_PASSIN EASYRSA_PASSOUT
+  unset EASYRSA_BATCH EASYRSA_PASSIN
 
   # 验证证书生成成功
   if [ ! -f "./pki/issued/$OVPN_USER.crt" ]; then
@@ -127,11 +145,16 @@ if [ "$ACTION" == "create" ]; then
     exit 1
   fi
 
-  # 记录密码
-  echo "$OVPN_USER  $USER_PASSWORD" >> "$PASSWORD_FILE"
-  echo ""
-  echo "Password: $USER_PASSWORD"
-  echo "Password saved to: $PASSWORD_FILE"
+  # 记录密码（无密码模式跳过）
+  if [ "$NOPASS" = false ]; then
+    echo "$OVPN_USER  $USER_PASSWORD" >> "$PASSWORD_FILE"
+    echo ""
+    echo "Password: $USER_PASSWORD"
+    echo "Password saved to: $PASSWORD_FILE"
+  else
+    echo ""
+    echo "无密码证书已生成（nopass）"
+  fi
 fi
 
 if [ "$ACTION" == "build" ]; then

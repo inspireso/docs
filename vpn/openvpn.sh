@@ -32,6 +32,7 @@ persist-key
 persist-tun
 status openvpn-status.log
 log-append  openvpn.log
+timestamp
 verb 3
 explicit-exit-notify 1
 script-security 2
